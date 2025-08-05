@@ -23,9 +23,10 @@
     }
   ],
   "env": {
-    "REACT_APP_API_URL": "https://vetformulab-backend.onrender.com"
+    "REACT_APP_API_URL": https://x2-backend-j0jk.onrender.com
   },
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "framework": "create-react-app"
+
 }
