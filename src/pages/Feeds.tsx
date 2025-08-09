@@ -574,8 +574,7 @@ if (loading) {
         </div>
       </div>
 
-            {
-      {/* --- ФИЛЬТРЫ --- */}
+            {/* --- ФИЛЬТРЫ --- */}
       <div style={{
         display: 'flex',
         flexWrap: 'wrap',
@@ -648,7 +647,6 @@ if (loading) {
           </div>
         </div>
       </div>
-
 
 
       {/* --- ТАБЛИЦА КОРМОВ --- */}
