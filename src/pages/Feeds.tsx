@@ -35,6 +35,13 @@ const Feeds: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBrand, setSelectedBrand] = useState('');
   const [selectedType, setSelectedType] = useState('');
+  const [selectedFeedCategory, setSelectedFeedCategory] = useState(''); // полнорационный/дополнительный/терапевтический
+  const [proteinMin, setProteinMin] = useState<number | ''>('');
+  const [proteinMax, setProteinMax] = useState<number | ''>('');
+  const [fatMin, setFatMin] = useState<number | ''>('');
+  const [fatMax, setFatMax] = useState<number | ''>('');
+  const [fiberMin, setFiberMin] = useState<number | ''>('');
+  const [fiberMax, setFiberMax] = useState<number | ''>('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedAnimalType, setSelectedAnimalType] = useState(''); // Новый фильтр
 
@@ -246,8 +253,14 @@ const Feeds: React.FC = () => {
     const matchesType = !selectedType || feed.type === selectedType;
     const matchesAnimalType = !selectedAnimalType || feed.animal_type === selectedAnimalType;
     const matchesCategory = !selectedCategory || feed.category === selectedCategory;
+    const matchesFeedCategory = !selectedFeedCategory || (feed as any).feed_category === selectedFeedCategory;
+
+    const within = (val:number, min:any, max:any) => (min === '' || val >= min) && (max === '' || val <= max);
+    const matchesProtein = within(feed.protein, proteinMin, proteinMax);
+    const matchesFat = within(feed.fat, fatMin, fatMax);
+    const matchesFiber = within(feed.fiber, fiberMin, fiberMax);
     
-    return matchesSearch && matchesBrand && matchesType && matchesAnimalType && matchesCategory;
+    return matchesSearch && matchesBrand && matchesType && matchesAnimalType && matchesCategory && matchesFeedCategory && matchesProtein && matchesFat && matchesFiber;
   });
 
   // Пагинация
@@ -277,13 +290,16 @@ const Feeds: React.FC = () => {
     setSelectedFeedIngredients(ingredients);
     setShowIngredientsModal(true);
   };
+const feedsBySpecies = selectedAnimalType
+    ? feeds.filter(f => f.animal_type === selectedAnimalType)
+    : feeds;
 
-  const uniqueBrands = Array.from(new Set(feeds.map(feed => feed.brand)));
-  const uniqueTypes = Array.from(new Set(feeds.map(feed => feed.type)));
-  const uniqueAnimalTypes = Array.from(new Set(feeds.map(feed => feed.animal_type)));
-  const uniqueCategories = Array.from(new Set(feeds.map(feed => feed.category)));
-
-  if (loading) {
+  const uniqueAnimalTypes = Array.from(new Set(feeds.map(f => f.animal_type).filter(Boolean)));
+  const uniqueTypes = Array.from(new Set(feedsBySpecies.map(f => f.type).filter(Boolean)));
+  const uniqueBrands = Array.from(new Set(feedsBySpecies.map(f => f.brand).filter(Boolean)));
+  const uniqueFeedCategories = Array.from(new Set(feedsBySpecies.map(f => (f as any).feed_category || '').filter(Boolean)));
+  const uniquePurposes = Array.from(new Set(feedsBySpecies.map(f => f.category).filter(Boolean)));
+if (loading) {
     return (
       <div style={{
         display: 'flex',
@@ -346,12 +362,12 @@ const Feeds: React.FC = () => {
           {/* Фильтры */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr',
+            gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr',
             gap: '15px'
           }}>
             <input
               type="text"
-              placeholder="🔍 Поиск по названию, бренду, ингредиентам или категории..."
+              placeholder="🔍 Поиск по названию, бренду или ингредиентам..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={modernFieldStyle}
@@ -558,6 +574,7 @@ const Feeds: React.FC = () => {
         </div>
       </div>
 
+            {
       {/* --- ФИЛЬТРЫ --- */}
       <div style={{
         display: 'flex',
@@ -568,24 +585,71 @@ const Feeds: React.FC = () => {
       }}>
         <div>
           <label style={{ fontWeight: 600, color: '#2d3748', marginRight: 8 }}>Вид животного:</label>
-          <select value={selectedAnimalType} onChange={e => setSelectedAnimalType(e.target.value)} style={{ padding: '8px', borderRadius: '8px' }}>
+          <select value={selectedAnimalType} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedAnimalType(e.target.value)} style={{ padding: '8px', borderRadius: '8px' }}>
             <option value="">Все</option>
             <option value="dog">Собака</option>
             <option value="cat">Кошка</option>
           </select>
         </div>
+
         <div>
           <label style={{ fontWeight: 600, color: '#2d3748', marginRight: 8 }}>Категория:</label>
-          <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} style={{ padding: '8px', borderRadius: '8px' }}>
-            <option value="">Все</option>
-            <option value="puppy">Щенки/Котята</option>
-            <option value="adult">Взрослые</option>
-            <option value="senior">Пожилые</option>
-            <option value="weight">Снижение веса</option>
-            <option value="diet">Диетические</option>
+          <select value={selectedFeedCategory} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedFeedCategory(e.target.value)} style={{ padding: '8px', borderRadius: '8px' }}>
+            <option value="">Все категории</option>
+            {uniqueFeedCategories.map(c => (<option key={c} value={c}>{c}</option>))}
           </select>
         </div>
+
+        <div>
+          <label style={{ fontWeight: 600, color: '#2d3748', marginRight: 8 }}>Назначение:</label>
+          <select value={selectedCategory} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedCategory(e.target.value)} style={{ padding: '8px', borderRadius: '8px' }}>
+            <option value="">Все</option>
+            {uniquePurposes.map(p => (<option key={p} value={p}>{p}</option>))}
+          </select>
+        </div>
+
+        <div>
+          <label style={{ fontWeight: 600, color: '#2d3748', marginRight: 8 }}>Тип корма:</label>
+          <select value={selectedType} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedType(e.target.value)} style={{ padding: '8px', borderRadius: '8px' }}>
+            <option value="">Все</option>
+            {uniqueTypes.map(t => (<option key={t} value={t}>{t === 'dry' ? 'Сухой' : t === 'wet' ? 'Влажный' : t}</option>))}
+          </select>
+        </div>
+
+        <div>
+          <label style={{ fontWeight: 600, color: '#2d3748', marginRight: 8 }}>Бренд:</label>
+          <select value={selectedBrand} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedBrand(e.target.value)} style={{ padding: '8px', borderRadius: '8px' }}>
+            <option value="">Все</option>
+            {uniqueBrands.map(b => (<option key={b} value={b}>{b}</option>))}
+          </select>
+        </div>
+
+        <div>
+          <label style={{ fontWeight: 600, color: '#2d3748', display: 'block' }}>Белок, %</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input type="number" step="0.1" value={proteinMin} onChange={(e) => setProteinMin(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="от" style={{ padding: '8px', borderRadius: '8px', width: '80px' }} />
+            <input type="number" step="0.1" value={proteinMax} onChange={(e) => setProteinMax(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="до" style={{ padding: '8px', borderRadius: '8px', width: '80px' }} />
+          </div>
+        </div>
+
+        <div>
+          <label style={{ fontWeight: 600, color: '#2d3748', display: 'block' }}>Жир, %</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input type="number" step="0.1" value={fatMin} onChange={(e) => setFatMin(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="от" style={{ padding: '8px', borderRadius: '8px', width: '80px' }} />
+            <input type="number" step="0.1" value={fatMax} onChange={(e) => setFatMax(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="до" style={{ padding: '8px', borderRadius: '8px', width: '80px' }} />
+          </div>
+        </div>
+
+        <div>
+          <label style={{ fontWeight: 600, color: '#2d3748', display: 'block' }}>Клетчатка, %</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input type="number" step="0.1" value={fiberMin} onChange={(e) => setFiberMin(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="от" style={{ padding: '8px', borderRadius: '8px', width: '80px' }} />
+            <input type="number" step="0.1" value={fiberMax} onChange={(e) => setFiberMax(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="до" style={{ padding: '8px', borderRadius: '8px', width: '80px' }} />
+          </div>
+        </div>
       </div>
+
+
 
       {/* --- ТАБЛИЦА КОРМОВ --- */}
       <div style={{

@@ -411,7 +411,7 @@ const Comparisons: React.FC = () => {
                       if (property === 'calcium') return `${(value * 1000).toFixed(0)} мг/100г`;
                       if (property === 'phosphorus') return `${(value * 10).toFixed(0)} мг/100г`;
                       if (['crude_protein', 'crude_fat', 'crude_fiber', 'ash'].includes(property as string)) return `${value} г`;
-                      if ((property as string) === 'vitamin_a' || (property as string) === 'vitamin_d3') return `${value} МЕ/кг`;
+                      if ((property as string) === 'vitamin_a' || (property as string) === 'vitamin_d3') return `${value} МЕ/100г`;
                       return `${value}%`;
                     })()}
                   </span>
@@ -431,17 +431,21 @@ const Comparisons: React.FC = () => {
     if (compareMode === 'as_is') {
       return value;
     } else if (compareMode === 'per_1000kcal') {
-      // Пересчет на 1000 ккал МЭ
-      const me = feed.metabolizable_energy || feed.metabolic_energy || 3500;
+      // Пересчет на 1000 ккал МЭ (влажность не меняем)
+      if (nutrient === 'moisture') return value;
+      const me = feed.metabolizable_energy || feed.metabolic_energy;
+      if (!me) return value;
       return (value * 1000) / me;
     } else if (compareMode === 'per_100g_dm') {
-      // Пересчет на 100г сухого вещества
-      const moisture = feed.moisture || 10; // Если влажность не указана, принимаем 10%
+      // Пересчет на 100 г сухого вещества (влажность = 0 по определению)
+      if (nutrient === 'moisture') return 0;
+      const moisture = typeof feed.moisture === 'number' ? feed.moisture : 10; // % как есть
       const dryMatter = 100 - moisture;
+      if (dryMatter <= 0) return value;
       return (value * 100) / dryMatter;
     }
     return value;
-  };
+  };;
 
   const getRecalculatedNorm = (baseNorm: string, feed: any) => {
     const numericNorm = parseFloat(baseNorm.replace(/[^\d.,]/g, '').replace(',', '.'));
@@ -910,8 +914,8 @@ const Comparisons: React.FC = () => {
                 { key: 'ash', label: '⚪ Зола (г)' },
                 { key: 'calcium', label: '🦴 Кальций (мг/100г)' },
                 { key: 'phosphorus', label: '⚡ Фосфор (мг/100г)' },
-                { key: 'vitamin_a', label: '🍊 Витамин А (МЕ/кг)' },
-                { key: 'vitamin_d3', label: '☀️ Витамин Д (МЕ/кг)' }
+                { key: 'vitamin_a', label: '🍊 Витамин А (МЕ/100г)' },
+                { key: 'vitamin_d3', label: '☀️ Витамин Д (МЕ/100г)' }
               ].map(field => (
                 <label 
                   key={field.key} 
@@ -1160,8 +1164,8 @@ const Comparisons: React.FC = () => {
                           ash: 'Зола (г)',
                           calcium: 'Кальций (мг/100г)',
                           phosphorus: 'Фосфор (мг/100г)',
-                          vitamin_a: 'Витамин А (МЕ/кг)',
-                          vitamin_d3: 'Витамин Д (МЕ/кг)'
+                          vitamin_a: 'Витамин А (МЕ/100г)',
+                          vitamin_d3: 'Витамин Д (МЕ/100г)'
                         }[key] || key
                       }</td>
                       {selectedFeedsData.map(feed => {
@@ -1169,16 +1173,19 @@ const Comparisons: React.FC = () => {
                         
                         // Специальная обработка для витаминов
                         if (key === 'vitamin_a') {
-                          value = feed.vitamins?.vitamin_a || 0;
+                          value = (feed.vitamins?.vitamin_a || 0) * 0.1; // IU/kg -> IU/100г
                         } else if (key === 'vitamin_d3') {
-                          value = feed.vitamins?.vitamin_d3 || 0;
+                          value = (feed.vitamins?.vitamin_d3 || 0) * 0.1; // IU/kg -> IU/100г
                         } else {
                           value = feed[key as keyof Feed];
                         }
                         
                         // Пересчёт значений
                         if (compareMode === 'per_1000kcal' && key !== 'ingredients') {
-                          if (typeof value === 'number' && typeof feed.metabolizable_energy === 'number' && feed.metabolizable_energy) {
+                          if (key === 'moisture') {
+                            // Влажность при 1000 ккал не меняется
+                            value = value;
+                          } else if (typeof value === 'number' && typeof feed.metabolizable_energy === 'number' && feed.metabolizable_energy) {
                             value = (value / feed.metabolizable_energy) * 1000;
                           } else {
                             value = '';
@@ -1186,7 +1193,10 @@ const Comparisons: React.FC = () => {
                         }
                         if (compareMode === 'per_100g_dm' && key !== 'ingredients') {
                           const dryMatter = typeof feed.moisture === 'number' ? 100 - feed.moisture : 90;
-                          if (typeof value === 'number' && dryMatter) {
+                          if (key === 'moisture') {
+                            // В сухом веществе воды нет
+                            value = 0;
+                          } else if (typeof value === 'number' && dryMatter) {
                             value = (value / dryMatter) * 100;
                           } else {
                             value = '';
