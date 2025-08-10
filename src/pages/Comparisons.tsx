@@ -1180,7 +1180,43 @@ const Comparisons: React.FC = () => {
                           value = feed[key as keyof Feed];
                         }
                         
-                        // Пересчёт значений
+                        
+if (compareMode === 'kcal1000') {
+  const kcalPerKg = feed.energy_kcal_per_kg ?? feed.kcal_per_kg ?? feed.kcalPerKg;
+  if (!kcalPerKg || kcalPerKg <= 0) {
+    displayValue = null;
+  } else {
+    // сколько граммов корма нужно для 1000 ккал
+    const gramsFor1000 = 1000000 / kcalPerKg; // г
+
+    const percentKeys = ['protein','fat','fiber','ash','moisture','calcium','phosphorus'];
+    const toMg100gSmart = (val: number): number => (val <= 20 ? val * 1000 : val); // г->мг, мг оставляем
+    const asGramsFromPercent = (percent: number) => (percent / 100) * gramsFor1000;
+    const asGramsFromGPer100g = (gPer100g: number) => gPer100g * (gramsFor1000 / 100);
+
+    if (column.key === 'moisture') {
+      // Влажность в режиме 1000 ккал не меняем (процент остаётся как есть)
+      displayValue = value;
+    } else if (percentKeys.includes(column.key)) {
+      // Значение задано в процентах (% от продукта)
+      const grams = asGramsFromPercent(value as number);
+      if (column.key === 'calcium' || column.key === 'phosphorus') {
+        displayValue = grams * 1000; // мг/1000 ккал
+      } else {
+        displayValue = grams; // г/1000 ккал
+      }
+    } else if (column.key === 'vitaminA' || column.key === 'vitaminD') {
+      // Витамины: МЕ/кг -> МЕ/1000 ккал пропорционально массе
+      displayValue = (value as number) * (gramsFor1000 / 1000);
+    } else {
+      // Если где-то значение было в г/100г — пересчитаем как для г/100г
+      const grams = asGramsFromGPer100g(value as number);
+      displayValue = grams;
+    }
+  }
+}
+
+// Пересчёт значений
                         if (compareMode === 'per_1000kcal' && key !== 'ingredients') {
                           if (key === 'moisture') {
                             // Влажность при 1000 ккал не меняется
