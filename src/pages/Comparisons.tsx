@@ -1185,15 +1185,8 @@ const Comparisons: React.FC = () => {
                         
                         // Пересчёт значений
                         if (compareMode === 'per_1000kcal' && key !== 'ingredients') {
-                          if (key === 'moisture') {
-                            // Влажность при 1000 ккал не меняется
-                            value = value;
-                          } else if (typeof value === 'number' && typeof feed.metabolizable_energy === 'number' && feed.metabolizable_energy) {
-                            value = (value / feed.metabolizable_energy) * 1000;
-                          } else {
-                            value = '';
-                          }
-                        }
+  // Оставляем value как есть — пересчёт выполнит recalculateValue
+}
                         if (compareMode === 'per_100g_dm' && key !== 'ingredients') {
                           const dryMatter = typeof feed.moisture === 'number' ? 100 - feed.moisture : 90;
                           if (key === 'moisture') {
