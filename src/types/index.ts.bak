@@ -3,7 +3,7 @@
 export interface Animal {
   id: number;
   name: string;
-  species: 'dog' | 'cat';
+  species: 'dog' | 'cat' | 'ferret';
   weight: number;
   age: number;
   gender: 'male' | 'female';
@@ -18,7 +18,7 @@ export interface Animal {
 
 export interface CreateAnimalRequest {
   name: string;
-  species: 'dog' | 'cat';
+  species: 'dog' | 'cat' | 'ferret';
   weight: number;
   age: number;
   gender: 'male' | 'female';
@@ -178,7 +178,7 @@ export interface Comparison {
 
 export interface EnergyRequirementRequest {
   weight: number;
-  species: 'dog' | 'cat';
+  species: 'dog' | 'cat' | 'ferret';
   activity_level: 'low' | 'moderate' | 'high' | 'very_high';
   physiological_state?: 'normal' | 'pregnant' | 'lactating' | 'growth' | 'senior';
   is_neutered?: boolean;
@@ -216,7 +216,7 @@ export interface CalculationStats {
 // Локальные типы для UI
 export interface AnimalFormData {
   name: string;
-  species: 'dog' | 'cat';
+  species: 'dog' | 'cat' | 'ferret';
   weight: string;
   age: string;
   gender: 'male' | 'female';
@@ -269,6 +269,7 @@ export interface FeedFormData {
 export const SPECIES_OPTIONS = [
   { value: 'dog', label: 'Собака', icon: '🐕' },
   { value: 'cat', label: 'Кошка', icon: '🐱' },
+  { value: 'ferret', label: 'Хорек', icon: '🦔' },
 ] as const;
 
 export const GENDER_OPTIONS = [
@@ -300,7 +301,7 @@ export const FEED_TYPE_OPTIONS = [
 
 // Тип для расчёта энергетической потребности (МЭ)
 export interface AnimalEnergyData {
-  species: 'dog' | 'cat' | 'собака' | 'кошка' | 'хорек';
+  species: 'dog' | 'cat' | 'ferret' | 'собака' | 'кошка' | 'хорек';
   gender: 'male' | 'female' | 'самец' | 'самка';
   age: number;
   condition?: number;

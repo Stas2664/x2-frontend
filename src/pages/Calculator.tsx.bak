@@ -48,7 +48,7 @@ function calculateMEAlgorithm(params: {
     } else {
       const k = catLactWeekCoef(lactationWeek || 1);
       if (litterCount > 0 && litterCount < 3) return 100 * pow(oBW, 0.67) + 18 * oBW * k;
-      if (litterCount === 3 || litterCount === 4) return 100 * pow(oBW, 0.67) + 60 * oBW * k;
+      if (litterCount === 3 || litterCount === 4) return 100 * pow(oBW, 0.6) + 60 * oBW * k;
       if (litterCount > 4) return 100 * pow(oBW, 0.67) + 70 * oBW * k;
       return 100 * pow(oBW, 0.67);
     }

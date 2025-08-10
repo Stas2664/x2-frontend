@@ -132,30 +132,37 @@ const Comparisons: React.FC = () => {
       'crude_protein': {
         'собака': { adult: '18%', puppy: '22.5%' },
         'кошка': { adult: '26%', puppy: '30%' },
+        'хорек': { adult: '35%', puppy: '38%' }
       },
       'crude_fat': {
         'собака': { adult: '5.5%', puppy: '8.5%' },
         'кошка': { adult: '9%', puppy: '9%' },
+        'хорек': { adult: '15%', puppy: '20%' }
       },
       'calcium': {
         'собака': { adult: '0.5%', puppy: '1.2%' },
         'кошка': { adult: '0.4%', puppy: '1.0%' },
+        'хорек': { adult: '0.4%', puppy: '1.2%' }
       },
       'phosphorus': {
         'собака': { adult: '0.4%', puppy: '1.0%' },
         'кошка': { adult: '0.26%', puppy: '0.8%' },
+        'хорек': { adult: '0.3%', puppy: '0.9%' }
       },
       'metabolizable_energy': {
         'собака': { adult: '3500-4200', puppy: '4000-4500' },
         'кошка': { adult: '4000-4500', puppy: '4200-4800' },
+        'хорек': { adult: '4500-5200', puppy: '5000-5500' }
       },
       'crude_fiber': {
         'собака': { adult: '≤5%', puppy: '≤4%' },
         'кошка': { adult: '≤5%', puppy: '≤4%' },
+        'хорек': { adult: '≤3%', puppy: '≤2.5%' }
       },
       'ash': {
         'собака': { adult: '≤8%', puppy: '≤8%' },
         'кошка': { adult: '≤8%', puppy: '≤8%' },
+        'хорек': { adult: '≤7%', puppy: '≤7%' }
       }
     };
 
@@ -609,7 +616,7 @@ const Comparisons: React.FC = () => {
               >
                 <option value="собака">🐕 Собака</option>
                 <option value="кошка">🐱 Кошка</option>
-                
+                <option value="хорек">🦡 Хорёк</option>
               </select>
             </div>
             <div>
