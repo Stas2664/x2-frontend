@@ -427,7 +427,7 @@ const Comparisons: React.FC = () => {
       const me = feed.metabolizable_energy || feed.metabolic_energy;
       if (!me || nutrient === 'moisture') return value;
 
-      const factor = kcalFactor(me);
+      const factor = me < 1000 ? (1000 / me) : (10000 / me);
 
       // Белок/жир/клетчатка/зола: база г/100г → г/1000 ккал
       if (['crude_protein','crude_fat','crude_fiber','ash'].includes(nutrient)) {
