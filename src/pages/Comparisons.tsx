@@ -421,52 +421,354 @@ const Comparisons: React.FC = () => {
 
   // --- ФУНКЦИИ ПЕРЕСЧЕТА ---
   const recalculateValue = (value: number, feed: any, nutrient: string) => {
-  if (compareMode === 'as_is') {
-    return value;
-  }
-
-  if (compareMode === 'per_1000kcal') {
-    // Влажность в режиме 1000 ккал не меняем (по требованию клиента)
-    if (nutrient === 'moisture') return value;
-
-    // МЭ хранится как ккал/100 г
-    const mePer100g =
-      (feed as any).metabolizable_energy ??
-      (feed as any).metabolic_energy ??
-      (feed as any).kcal_per_100g ??
-      (feed as any).kcalPer100g;
-
-    if (!mePer100g || Number.isNaN(Number(mePer100g)) || Number(mePer100g) <= 0) {
+    if (compareMode === 'as_is') {
       return value;
-    }
+    } else if (compareMode === 'per_1000kcal') {
+  // МЭ хранится как ккал/100 г
+  const mePer100g =
+    (feed as any).metabolizable_energy ??
+    (feed as any).metabolic_energy ??
+    (feed as any).kcal_per_100g ??
+    (feed as any).kcalPer100g;
 
+  if (!mePer100g || Number.isNaN(Number(mePer100g)) || Number(mePer100g) <= 0) {
+    displayValue = null;
+  } else {
     // Сколько граммов корма нужно для 1000 ккал (т.к. МЭ = ккал/100 г)
     const gramsFor1000 = 100000 / Number(mePer100g); // г
 
-    // Показатели, приходящие в процентах (г/100г)
-    const percentKeys = ['crude_protein','crude_fat','crude_fiber','ash','calcium','phosphorus'];
-    if (percentKeys.includes(nutrient)) {
-      const grams = (Number(value) / 100) * gramsFor1000;
-      if (nutrient === 'calcium' || nutrient === 'phosphorus') {
-        return grams * 1000; // мг/1000 ккал
+    const asGramsFromPercent = (pct: number): number =>
+      (pct / 100) * gramsFor1000;
+
+    const asGramsFromGPer100g = (gPer100g: number): number =>
+      gPer100g * (gramsFor1000 / 100);
+
+    if (column.key === 'moisture') {
+      // Влажность в режиме 1000 ккал не меняем
+      displayValue = value;
+    } else if (
+      column.key === 'protein' ||
+      column.key === 'fat' ||
+      column.key === 'fiber' ||
+      column.key === 'ash' ||
+      column.key === 'calcium' ||
+      column.key === 'phosphorus'
+    ) {
+      const grams = asGramsFromPercent(Number(value));
+      if (column.key === 'calcium' || column.key === 'phosphorus') {
+        displayValue = grams * 1000; // мг/1000 ккал
+      } else {
+        displayValue = grams; // г/1000 ккал
       }
-      return grams; // г/1000 ккал
+    } else if (column.key === 'vitaminA' || column.key === 'vitaminD') {
+      // МЕ/кг -> МЕ/1000 ккал пропорционально массе
+      const perKg = Number(value);
+      displayValue = perKg * (gramsFor1000 / 1000);
+    } else {
+      // На случай полей в г/100 г
+      const grams = asGramsFromGPer100g(Number(value));
+      displayValue = grams;
     }
-
-    // Для всех значений, которые трактуются как на 100 г (например, витамины после предварительного пересчёта в IU/100г)
-    return Number(value) * (gramsFor1000 / 100);
   }
+}
+else {
+    // сколько граммов корма нужно для 1000 ккал
+    const gramsFor1000 = 1000000 / kcalPerKg; // г
 
-  if (compareMode === 'per_100g_dm') {
-    // Пересчёт на 100 г сухого вещества: влажность = 0
-    if (nutrient === 'moisture') return 0;
-    const moisture = typeof feed.moisture === 'number' ? feed.moisture : 10;
-    const dryMatter = 100 - moisture;
-    if (dryMatter <= 0) return value;
-    return (Number(value) * 100) / dryMatter;
+    const percentKeys = ['protein','fat','fiber','ash','moisture','calcium','phosphorus'];
+    const toMg100gSmart = (val: number): number => (val <= 20 ? val * 1000 : val); // г->мг, мг оставляем
+    const asGramsFromPercent = (percent: number) => (percent / 100) * gramsFor1000;
+    const asGramsFromGPer100g = (gPer100g: number) => gPer100g * (gramsFor1000 / 100);
+
+    if (column.key === 'moisture') {
+      // Влажность в режиме 1000 ккал не меняем (процент остаётся как есть)
+      displayValue = value;
+    } else if (percentKeys.includes(column.key)) {
+      // Значение задано в процентах (% от продукта)
+      const grams = asGramsFromPercent(value as number);
+      if (column.key === 'calcium' || column.key === 'phosphorus') {
+        displayValue = grams * 1000; // мг/1000 ккал
+      } else {
+        displayValue = grams; // г/1000 ккал
+      }
+    } else if (column.key === 'vitaminA' || column.key === 'vitaminD') {
+      // Витамины: МЕ/кг -> МЕ/1000 ккал пропорционально массе
+      displayValue = (value as number) * (gramsFor1000 / 1000);
+    } else {
+      // Если где-то значение было в г/100г — пересчитаем как для г/100г
+      const grams = asGramsFromGPer100g(value as number);
+      displayValue = grams;
+    }
   }
+}
 
-  return value;
+// Пересчёт значений
+                        if (compareMode === 'per_1000kcal' && key !== 'ingredients') {
+                          if (key === 'moisture') {
+                            // Влажность при 1000 ккал не меняется
+                            value = value;
+                          } else if (typeof value === 'number' && typeof feed.metabolizable_energy === 'number' && feed.metabolizable_energy) {
+                            value = (value / feed.metabolizable_energy) * 1000;
+                          } else {
+                            value = '';
+                          }
+                        }
+                        if (compareMode === 'per_100g_dm' && key !== 'ingredients') {
+                          const dryMatter = typeof feed.moisture === 'number' ? 100 - feed.moisture : 90;
+                          if (key === 'moisture') {
+                            // В сухом веществе воды нет
+                            value = 0;
+                          } else if (typeof value === 'number' && dryMatter) {
+                            value = (value / dryMatter) * 100;
+                          } else {
+                            value = '';
+                          }
+                        }
+
+                        // Применяем пересчет для числовых значений (кроме МЭ)
+                        let displayValue = value;
+                        if (typeof value === 'number' && key !== 'metabolizable_energy' && key !== 'metabolic_energy') {
+                          displayValue = recalculateValue(value, feed, key);
+                        }
+
+                        return <td key={feed.id} style={{ 
+                          padding: '12px 15px', 
+                          textAlign: 'center', 
+                          color: '#2d3748', 
+                          fontWeight: '500',
+                          background: 'white'
+                        }}>
+                          {typeof displayValue === 'number' ? (() => {
+                            // Конвертация для разных типов питательных веществ
+                            if (key === 'phosphorus') {
+                              return toMg100g(displayValue as number).toFixed(0); // мг/100г
+                            } else if (key === 'calcium') {
+                              return toMg100g(displayValue as number).toFixed(0); // мг/100г
+                            } else if (['crude_protein', 'crude_fat', 'crude_fiber', 'ash'].includes(key)) {
+                              return displayValue.toFixed(2); // граммы на 100г продукта (проценты уже означают г/100г)
+                            } else {
+                              return displayValue.toFixed(2);
+                            }
+                          })() : String(displayValue || '-')}
+                        </td>;
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Расчет суточных норм */}
+          {showAnimalForm && (
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.95)',
+              borderRadius: '15px',
+              overflow: 'hidden',
+              marginBottom: '25px',
+              border: '2px solid rgba(0, 200, 81, 0.1)'
+            }}>
+              <div style={{
+                background: 'linear-gradient(135deg, #FF6B35 0%, #F7931E 100%)',
+                color: 'white',
+                padding: '20px',
+                textAlign: 'center'
+              }}>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: '700', margin: 0 }}>
+                  🥣 Суточные нормы для {animalData.name} ({animalData.currentWeight} кг, {energyNeed} ккал/день)
+                </h2>
+              </div>
+
+              <div style={{ padding: '25px' }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${selectedFeedsData.length}, 1fr)`,
+                  gap: '20px'
+                }}>
+                  {selectedFeedsData.map(feed => {
+                    const dailyData = calculateDailyAmount(feed);
+                    
+                    return (
+                      <div key={feed.id} style={{
+                        background: 'linear-gradient(135deg, rgba(0, 200, 81, 0.05) 0%, rgba(51, 181, 229, 0.05) 100%)',
+                        border: '2px solid rgba(0, 200, 81, 0.1)',
+                        borderRadius: '15px',
+                        padding: '20px',
+                        textAlign: 'center'
+                      }}>
+                        <h3 style={{
+                          color: '#2d3748',
+                          marginBottom: '15px',
+                          fontSize: '1.1rem',
+                          fontWeight: '600'
+                        }}>
+                          {feed.brand} {feed.name.substring(0, 20)}...
+                        </h3>
+
+                        <div style={{
+                          background: '#00C851',
+                          color: 'white',
+                          padding: '15px',
+                          borderRadius: '10px',
+                          marginBottom: '15px'
+                        }}>
+                          <div style={{ fontSize: '1.8rem', fontWeight: '700' }}>
+                            {dailyData.grams} г
+                          </div>
+                          <div style={{ fontSize: '14px', opacity: 0.9 }}>
+                            суточная норма
+                          </div>
+                        </div>
+
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(3, 1fr)',
+                          gap: '8px',
+                          fontSize: '11px'
+                        }}>
+                          <div style={{
+                            background: 'white',
+                            padding: '8px',
+                            borderRadius: '6px',
+                            border: '1px solid rgba(0, 200, 81, 0.1)',
+                            textAlign: 'center'
+                          }}>
+                            <div style={{ fontWeight: '600', color: '#2d3748', fontSize: '10px' }}>Белок</div>
+                            <div style={{ color: '#666', fontSize: '12px', fontWeight: '600' }}>{dailyData.protein} г</div>
+                          </div>
+
+                          <div style={{
+                            background: 'white',
+                            padding: '8px',
+                            borderRadius: '6px',
+                            border: '1px solid rgba(0, 200, 81, 0.1)',
+                            textAlign: 'center'
+                          }}>
+                            <div style={{ fontWeight: '600', color: '#2d3748', fontSize: '10px' }}>Жир</div>
+                            <div style={{ color: '#666', fontSize: '12px', fontWeight: '600' }}>{dailyData.fat} г</div>
+                          </div>
+
+                          <div style={{
+                            background: 'white',
+                            padding: '8px',
+                            borderRadius: '6px',
+                            border: '1px solid rgba(0, 200, 81, 0.1)',
+                            textAlign: 'center'
+                          }}>
+                            <div style={{ fontWeight: '600', color: '#2d3748', fontSize: '10px' }}>Клетчатка</div>
+                            <div style={{ color: '#666', fontSize: '12px', fontWeight: '600' }}>{dailyData.fiber} г</div>
+                          </div>
+
+                          <div style={{
+                            background: 'white',
+                            padding: '8px',
+                            borderRadius: '6px',
+                            border: '1px solid rgba(0, 200, 81, 0.1)',
+                            textAlign: 'center'
+                          }}>
+                            <div style={{ fontWeight: '600', color: '#2d3748', fontSize: '10px' }}>Ca</div>
+                            <div style={{ color: '#666', fontSize: '12px', fontWeight: '600' }}>{dailyData.calcium} г</div>
+                          </div>
+
+                          <div style={{
+                            background: 'white',
+                            padding: '8px',
+                            borderRadius: '6px',
+                            border: '1px solid rgba(0, 200, 81, 0.1)',
+                            textAlign: 'center'
+                          }}>
+                            <div style={{ fontWeight: '600', color: '#2d3748', fontSize: '10px' }}>P</div>
+                            <div style={{ color: '#666', fontSize: '12px', fontWeight: '600' }}>{dailyData.phosphorus} г</div>
+                          </div>
+
+                          <div style={{
+                            background: 'white',
+                            padding: '8px',
+                            borderRadius: '6px',
+                            border: '1px solid rgba(0, 200, 81, 0.1)',
+                            textAlign: 'center'
+                          }}>
+                            <div style={{ fontWeight: '600', color: '#2d3748', fontSize: '10px' }}>Вит А</div>
+                            <div style={{ color: '#666', fontSize: '12px', fontWeight: '600' }}>{dailyData.vitaminA} МЕ</div>
+                          </div>
+
+                          <div style={{
+                            background: 'white',
+                            padding: '8px',
+                            borderRadius: '6px',
+                            border: '1px solid rgba(0, 200, 81, 0.1)',
+                            textAlign: 'center'
+                          }}>
+                            <div style={{ fontWeight: '600', color: '#2d3748', fontSize: '10px' }}>Вит Д</div>
+                            <div style={{ color: '#666', fontSize: '12px', fontWeight: '600' }}>{dailyData.vitaminD3} МЕ</div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+
+        </>
+      )}
+
+      {selectedFeeds.length === 0 && (
+        <div style={{
+          textAlign: 'center',
+          padding: '60px 20px',
+          background: 'rgba(255, 255, 255, 0.8)',
+          borderRadius: '20px',
+          border: '2px dashed rgba(0, 200, 81, 0.3)'
+        }}>
+          <div style={{ fontSize: '4rem', marginBottom: '20px' }}>🍖</div>
+          <h2 style={{
+            color: '#2d3748',
+            marginBottom: '15px',
+            fontSize: '1.5rem',
+            fontWeight: '600'
+          }}>
+            Сначала выберите корма для сравнения
+          </h2>
+          <p style={{ color: '#666', fontSize: '1.1rem', marginBottom: '30px' }}>
+            Перейдите на вкладку "Корма", выберите нужные корма с помощью чекбоксов 
+            и нажмите "Перейти к сравнению"
+          </p>
+          
+          <button
+            onClick={() => window.location.href = '/feeds'}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '15px 30px',
+              background: 'linear-gradient(135deg, #00C851 0%, #33B5E5 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '15px',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              boxShadow: '0 8px 25px rgba(0, 200, 81, 0.3)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-3px)';
+              e.currentTarget.style.boxShadow = '0 12px 35px rgba(0, 200, 81, 0.4)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 200, 81, 0.3)';
+            }}
+          >
+            🍖 Перейти к выбору кормов
+          </button>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default Comparisons; 
