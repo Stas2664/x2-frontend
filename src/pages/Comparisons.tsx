@@ -425,9 +425,10 @@ const Comparisons: React.FC = () => {
 
     if (compareMode === 'per_1000kcal') {
       const me = feed.metabolizable_energy || feed.metabolic_energy;
-      if (!me || nutrient === 'moisture') return value;
+      if (!me || nutrient === 'moisture') return value; // влажность не меняем
 
-      const factor = me < 1000 ? (1000 / me) : (10000 / me);
+      // База: БЖК/зола/минералы в процентах (г/100г), Ca/P в % (конвертим в мг ниже при выводе), витамины в МЕ/кг
+      const factor = me < 1000 ? (1000 / me) : (10000 / me); // перевод на 1000 ккал
 
       // Белок/жир/клетчатка/зола: база г/100г → г/1000 ккал
       if (['crude_protein','crude_fat','crude_fiber','ash'].includes(nutrient)) {
@@ -441,15 +442,15 @@ const Comparisons: React.FC = () => {
 
       // Витамины: база IU/кг → IU/1000 ккал
       if (['vitamin_a','vitamin_d3'].includes(nutrient)) {
-        const meKg = me < 1000 ? me * 10 : me; // МЭ в ккал/кг
-        return (value * 1000) / meKg;
+        const mePerKg = me < 1000 ? me * 10 : me; // гарантируем ккал/кг
+        return (value * 1000) / mePerKg; // IU/кг -> IU/1000 ккал
       }
 
       return value;
     }
 
     if (compareMode === 'per_100g_dm') {
-      if (nutrient === 'moisture') return 0;
+      if (nutrient === 'moisture') return 0; // воды нет в СВ
       const moisture = typeof feed.moisture === 'number' ? feed.moisture : 10;
       const dm = 100 - moisture;
       return dm > 0 ? (value * 100) / dm : value;
@@ -1129,9 +1130,9 @@ const Comparisons: React.FC = () => {
                 📊 Сравнительная таблица кормов
               </h2>
               <div style={{ fontSize: '14px', opacity: 0.9 }}>
-                {compareMode === 'as_is' && 'Значения как в базе данных (на 100г продукта)'}
-                {compareMode === 'per_1000kcal' && 'Значения пересчитаны на 1000 ккал МЭ'}
-                {compareMode === 'per_100g_dm' && 'Значения пересчитаны на 100г сухого вещества'}
+                 {compareMode === 'as_is' && 'Значения как в базе данных (на 100г продукта). Витамины: МЕ/100г'}
+                 {compareMode === 'per_1000kcal' && 'Значения пересчитаны на 1000 ккал МЭ. Витамины: МЕ/1000 ккал'}
+                 {compareMode === 'per_100g_dm' && 'Значения пересчитаны на 100г сухого вещества. Влажность = 0%'}
               </div>
             </div>
 
@@ -1184,9 +1185,10 @@ const Comparisons: React.FC = () => {
                         
                         // Специальная обработка для витаминов
                         if (key === 'vitamin_a') {
-                          value = (feed.vitamins?.vitamin_a || 0) * 0.1; // IU/kg -> IU/100г
+                          // из базы: IU/кг → IU/100г
+                          value = (feed.vitamins?.vitamin_a || 0) * 0.1;
                         } else if (key === 'vitamin_d3') {
-                          value = (feed.vitamins?.vitamin_d3 || 0) * 0.1; // IU/kg -> IU/100г
+                          value = (feed.vitamins?.vitamin_d3 || 0) * 0.1;
                         } else {
                           value = feed[key as keyof Feed];
                         }
@@ -1220,7 +1222,7 @@ const Comparisons: React.FC = () => {
                           fontWeight: '500',
                           background: 'white'
                         }}>
-                          {typeof displayValue === 'number' ? (() => {
+                           {typeof displayValue === 'number' ? (() => {
                             // Конвертация для разных типов питательных веществ
                             if (key === 'phosphorus') {
                               if (compareMode === 'per_1000kcal') {
@@ -1234,6 +1236,9 @@ const Comparisons: React.FC = () => {
                               } else {
                                 return (displayValue * 1000).toFixed(0); // мг/100г
                               }
+                              } else if (key === 'vitamin_a' || key === 'vitamin_d3') {
+                                // Витамины уже в МЕ/100г в базовом, пересчитываются в recalculateValue для 1000 ккал
+                                return displayValue.toFixed(0);
                             } else if (['crude_protein', 'crude_fat', 'crude_fiber', 'ash'].includes(key)) {
                               return displayValue.toFixed(2); // граммы на 100г продукта (проценты уже означают г/100г)
                             } else {
