@@ -499,6 +499,24 @@ const Calculator: React.FC = () => {
               </select>
               <label style={modernLabelStyle}>статус</label>
             </div>
+
+            {animalData.status === 'лактация' && (
+              <div style={fieldContainerStyle}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', alignItems: 'center' }}>
+                  <select
+                    value={animalData.lactationWeeks || 0}
+                    onChange={(e) => handleInputChange('lactationWeeks', parseInt(e.target.value))}
+                    style={modernSelectStyle}
+                  >
+                    <option value={0}>Неделя</option>
+                    {[1,2,3,4,5,6,7].map(w => (
+                      <option key={w} value={w}>{w} неделя</option>
+                    ))}
+                  </select>
+                </div>
+                <label style={modernLabelStyle}>неделя лактации</label>
+              </div>
+            )}
           </div>
 
           {/* Группа 2: Персональные данные */}

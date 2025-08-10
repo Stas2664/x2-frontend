@@ -437,61 +437,27 @@ if (loading) {
               onFocus={(e) => Object.assign(e.target.style, modernFocusStyle)}
               onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: '0 3px 15px rgba(0, 200, 81, 0.08)', transform: 'none' })}
             >
-              <option value="">Все категории</option>
-              
-              {/* Категории для щенков */}
-              <optgroup label="🐶 Для щенков">
-                <option value="puppy_small">Щенки мелких пород</option>
-                <option value="puppy_medium">Щенки средних пород</option>
-                <option value="puppy_large">Щенки крупных пород</option>
-                <option value="puppy_all">Щенки всех пород</option>
-              </optgroup>
-              
-              {/* Категории для котят */}
-              <optgroup label="🐱 Для котят">
-                <option value="kitten">Котята</option>
-                <option value="kitten_mother">Котята и кормящие кошки</option>
-              </optgroup>
-              
-              {/* Категории для взрослых */}
-              <optgroup label="🦮 Для взрослых собак">
-                <option value="adult_small">Взрослые мелких пород</option>
-                <option value="adult_medium">Взрослые средних пород</option>
-                <option value="adult_large">Взрослые крупных пород</option>
-                <option value="adult_all">Взрослые всех пород</option>
-                <option value="active">Активные собаки</option>
-                <option value="working">Рабочие собаки</option>
-              </optgroup>
-              
-              <optgroup label="🐈 Для взрослых кошек">
-                <option value="adult_cat">Взрослые кошки</option>
-                <option value="indoor_cat">Домашние кошки</option>
-                <option value="outdoor_cat">Уличные кошки</option>
-              </optgroup>
-              
-              {/* Категории для пожилых */}
-              <optgroup label="👴 Для пожилых">
-                <option value="senior_dog">Пожилые собаки</option>
-                <option value="senior_cat">Пожилые кошки</option>
-              </optgroup>
-              
-              {/* Специализированные диеты */}
-              <optgroup label="⚕️ Диетические (базовые)">
-                <option value="weight_loss">Снижение веса</option>
-                <option value="sensitive_digestion">Чувствительное пищеварение</option>
-                <option value="skin_coat">Здоровье кожи и шерсти</option>
-              </optgroup>
-              
-              {/* Профессиональные диеты (будут скрыты для обычных пользователей) */}
-              <optgroup label="🏥 Лечебные диеты (PRO)" style={{ color: '#999', fontStyle: 'italic' }}>
-                <option value="renal" disabled>Почечные диеты</option>
-                <option value="hepatic" disabled>Печеночные диеты</option>
-                <option value="cardiac" disabled>Кардиологические</option>
-                <option value="diabetic" disabled>Диабетические</option>
-                <option value="gastrointestinal" disabled>Желудочно-кишечные</option>
-                <option value="urinary" disabled>Урологические</option>
-                <option value="hypoallergenic" disabled>Гипоаллергенные</option>
-              </optgroup>
+              <option value="">Все назначения</option>
+              {uniquePurposes && uniquePurposes.length > 0 ? (
+                uniquePurposes.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))
+              ) : (
+                <>
+                  <option value="kitten">Котята</option>
+                  <option value="puppy_small">Щенки мелких пород</option>
+                  <option value="puppy_medium">Щенки средних пород</option>
+                  <option value="puppy_large">Щенки крупных пород</option>
+                  <option value="adult">Взрослые</option>
+                  <option value="senior">Пожилые</option>
+                  <option value="sterilized_cat">Стерилизованные кошки</option>
+                  <option value="active">Активные собаки</option>
+                  <option value="working">Рабочие собаки</option>
+                  <option value="weight_loss">Снижение веса</option>
+                  <option value="sensitive_digestion">Чувствительное пищеварение</option>
+                  <option value="skin_coat">Кожа и шерсть</option>
+                </>
+              )}
             </select>
             
           </div>
