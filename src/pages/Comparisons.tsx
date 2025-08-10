@@ -1181,7 +1181,7 @@ const Comparisons: React.FC = () => {
                         }
                         
                         
-if (compareMode === 'kcal1000') {
+if (compareMode === 'per_1000kcal') {
   const kcalPerKg = feed.energy_kcal_per_kg ?? feed.kcal_per_kg ?? feed.kcalPerKg;
   if (!kcalPerKg || kcalPerKg <= 0) {
     displayValue = null;
