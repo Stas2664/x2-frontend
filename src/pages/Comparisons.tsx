@@ -438,7 +438,14 @@ const Comparisons: React.FC = () => {
       return (value * 100) / dryMatter;
     }
     return value;
-  };;
+  };
+
+  // Нормализация единиц для Ca/P: если значение <= 20, считаем что это г/100г и конвертируем в мг/100г; иначе уже мг/100г
+  const toMg100g = (val: number): number => {
+    if (val === null || val === undefined || Number.isNaN(val as any)) return 0;
+    return val <= 20 ? val * 1000 : val;
+  };
+;
 
   const getRecalculatedNorm = (baseNorm: string, feed: any) => {
     const numericNorm = parseFloat(baseNorm.replace(/[^\d.,]/g, '').replace(',', '.'));
@@ -1212,9 +1219,9 @@ const Comparisons: React.FC = () => {
                           {typeof displayValue === 'number' ? (() => {
                             // Конвертация для разных типов питательных веществ
                             if (key === 'phosphorus') {
-                              return (displayValue * 1000).toFixed(0); // мг/100г (из г/100г)
+                              return toMg100g(displayValue as number).toFixed(0); // мг/100г
                             } else if (key === 'calcium') {
-                              return (displayValue * 1000).toFixed(0); // мг/100г (из г/100г)
+                              return toMg100g(displayValue as number).toFixed(0); // мг/100г
                             } else if (['crude_protein', 'crude_fat', 'crude_fiber', 'ash'].includes(key)) {
                               return displayValue.toFixed(2); // граммы на 100г продукта (проценты уже означают г/100г)
                             } else {
