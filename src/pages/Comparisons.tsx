@@ -421,32 +421,40 @@ const Comparisons: React.FC = () => {
 
   // --- ФУНКЦИИ ПЕРЕСЧЕТА ---
   const recalculateValue = (value: number, feed: any, nutrient: string) => {
-    if (compareMode === 'as_is') {
-      return value;
-    } else if (compareMode === 'per_1000kcal') {
+    if (compareMode === 'as_is') return value;
+
+    if (compareMode === 'per_1000kcal') {
       const me = feed.metabolizable_energy || feed.metabolic_energy;
-      if (!me) return value;
-      if (nutrient === 'moisture') return value;
-      // Белок/жир/клетчатка/зола — г/1000 ккал
+      if (!me || nutrient === 'moisture') return value;
+
+      const factor = kcalFactor(me);
+
+      // Белок/жир/клетчатка/зола: база г/100г → г/1000 ккал
       if (['crude_protein','crude_fat','crude_fiber','ash'].includes(nutrient)) {
-        return value * (10000 / me);
+        return value * factor;
       }
-      // Ca и P — мг/100г в базе, пересчет в мг/1000 ккал
+
+      // Кальций/фосфор: база мг/100г → мг/1000 ккал
       if (['calcium','phosphorus'].includes(nutrient)) {
-        return value * (10000 / me);
+        return value * factor;
       }
-      // Витамины — МЕ/кг → МЕ/1000 ккал
+
+      // Витамины: база IU/кг → IU/1000 ккал
       if (['vitamin_a','vitamin_d3'].includes(nutrient)) {
-        return value * (1000 / me);
+        const meKg = me < 1000 ? me * 10 : me; // МЭ в ккал/кг
+        return (value * 1000) / meKg;
       }
+
       return value;
-    } else if (compareMode === 'per_100g_dm') {
+    }
+
+    if (compareMode === 'per_100g_dm') {
       if (nutrient === 'moisture') return 0;
       const moisture = typeof feed.moisture === 'number' ? feed.moisture : 10;
-      const dryMatter = 100 - moisture;
-      if (dryMatter <= 0) return value;
-      return (value * 100) / dryMatter;
+      const dm = 100 - moisture;
+      return dm > 0 ? (value * 100) / dm : value;
     }
+
     return value;
   };
 
