@@ -3,6 +3,7 @@ import config from '../config';
 import { AnimalEnergyData } from '../types';
 import { calculateEnergyNeed } from '../utils/calculateEnergyNeed';
 import { calculateIdealWeight } from '../utils/calculateIdealWeight';
+import { calculateMEAlgorithm } from '../utils/calculateMEAdvanced';
 
 interface Feed {
   id: number;
@@ -57,7 +58,7 @@ const Comparisons: React.FC = () => {
     contact: '',
     meCoefficient: 1
   });
-  const [energyNeed, setEnergyNeed] = useState<number>(calculateEnergyNeed(animalData));
+  const [energyNeed, setEnergyNeed] = useState<number>(0);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   // --- СТЕЙТЫ ДЛЯ ФИЛЬТРОВ И ВЫБОРА ПОКАЗАТЕЛЕЙ ---
@@ -239,7 +240,31 @@ const Comparisons: React.FC = () => {
   }, [animalData.currentWeight, animalData.condition, animalData.targetWeight]);
 
   useEffect(() => {
-    setEnergyNeed(calculateEnergyNeed(animalData));
+    const speciesAlg = animalData.species === 'собака' ? 'dog' : 'cat';
+    const activityMap: any = {
+      'склонность к ожирению': 'obesity_prone',
+      'низкая активность': 'low',
+      'нормальная активность': 'moderate',
+      'высокая активность': 'high'
+    };
+    const statusMap: any = {
+      'беременность 1-4 недели': 'preg_1_4',
+      'беременность >5 недель': 'preg_5_plus',
+      'лактация': 'lactation'
+    };
+    const calc = calculateMEAlgorithm({
+      species: speciesAlg as any,
+      age: animalData.age || 0,
+      ageUnit: 'years',
+      weight: animalData.targetWeight || 0,
+      bcs: (animalData.condition as any) || 5,
+      activity: (activityMap[animalData.activity || 'нормальная активность'] || 'moderate') as any,
+      status: (statusMap[animalData.status || ''] || 'none') as any,
+      adultWeight: animalData.adultWeight || 0,
+      lactationWeek: animalData.lactationWeeks || 0,
+      litterCount: 0
+    });
+    setEnergyNeed(calc);
   }, [animalData]);
 
   const loadSelectedFeeds = () => {
@@ -728,6 +753,7 @@ const Comparisons: React.FC = () => {
                 onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: '0 3px 15px rgba(0, 200, 81, 0.08)', transform: 'none' })}
               >
                 <option value="склонность к ожирению">😴 Склонность к ожирению</option>
+                <option value="низкая активность">🧘 Низкая активность</option>
                 <option value="нормальная активность">🚶 Нормальная активность</option>
                 <option value="высокая активность">🏃 Высокая активность</option>
               </select>

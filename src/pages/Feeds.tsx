@@ -485,7 +485,7 @@ if (loading) {
           </div>
 
           {/* Кнопка добавления */}
-          {isPro && (
+          {isPro ? (
             <button
               onClick={() => setShowAddForm(true)}
               style={{
@@ -509,6 +509,28 @@ if (loading) {
             >
               ➕ Добавить корм
             </button>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                disabled
+                title="Доступно в PRO"
+                style={{
+                  padding: '12px 24px',
+                  background: 'linear-gradient(135deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.08) 100%)',
+                  color: '#999',
+                  border: '2px dashed rgba(0,0,0,0.1)',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'not-allowed'
+                }}
+              >
+                🔒 Добавить корм
+              </button>
+              <span style={{ color: '#6b7280', fontSize: 13 }}>
+                Функция доступна в PRO. <Link to="/login" style={{ color: '#00C851', textDecoration: 'none', fontWeight: 600 }}>Оформить подписку</Link>
+              </span>
+            </div>
           )}
         {/* Диапазоны БЖК */}
         <div style={{
