@@ -318,6 +318,13 @@ const feedsBySpecies = selectedAnimalType
       setSelectedFeedCategory('');
     }
   }, [isPro, selectedFeedCategory]);
+
+  // Список категорий для селекта: всегда показываем базовые пункты
+  const baseCategories = isPro 
+    ? ['полнорационный','дополнительный','терапевтический'] 
+    : ['полнорационный','дополнительный'];
+  const availableFeedCategories = Array.from(new Set([...baseCategories, ...uniqueFeedCategories]));
+
 if (loading) {
     return (
       <div style={{
@@ -440,15 +447,9 @@ if (loading) {
                   onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: '0 3px 15px rgba(0, 200, 81, 0.08)', transform: 'none' })}
                 >
                   <option value="">Все категории корма</option>
-                  {(() => {
-                    const listFromData = (uniqueFeedCategories && uniqueFeedCategories.length > 0)
-                      ? uniqueFeedCategories
-                      : ['полнорационный','дополнительный','терапевтический'];
-                    const filtered = isPro ? listFromData : listFromData.filter(c => c !== 'терапевтический');
-                    return filtered.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ));
-                  })()}
+                  {availableFeedCategories.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
                 </select>
 
             <select

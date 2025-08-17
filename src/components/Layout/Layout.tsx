@@ -96,12 +96,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               e.currentTarget.style.color = '#2d3748';
             }}
           >
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '12px' }}>
-              <circle cx="6" cy="8" r="2"/>
-              <circle cx="18" cy="8" r="2"/>
-              <circle cx="12" cy="6" r="2"/>
-              <ellipse cx="12" cy="15" rx="5" ry="4"/>
-            </svg>
+            {/* Пиктограмма удалена по требованию — оставляем только текстовый логотип */}
             VetFormuLab
             <span style={{
               color: '#666',
