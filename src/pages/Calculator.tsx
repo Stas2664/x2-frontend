@@ -182,6 +182,8 @@ interface Feed {
 
 const Calculator: React.FC = () => {
   const windowWidth = window.innerWidth;
+  const { isAuthenticated, user } = require('../contexts/AuthContext').useAuth();
+  const isPro = isAuthenticated && (user?.subscription_type === 'pro' || user?.subscription_type === 'premium');
 
   const [animalData, setAnimalData] = useState<AnimalEnergyData>({
     species: 'собака',
@@ -205,6 +207,22 @@ const Calculator: React.FC = () => {
   const [diagnosis, setDiagnosis] = useState('');
   const [intolerances, setIntolerances] = useState('');
   const [ageFormat, setAgeFormat] = useState<'years' | 'months' | 'weeks'>('years');
+  const [juvenile, setJuvenile] = useState<'none' | 'puppy' | 'kitten'>('none');
+
+  // Load saved data on mount to avoid reset
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('animalData');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setAnimalData((prev) => ({ ...prev, ...parsed }));
+      }
+      const savedDx = localStorage.getItem('diagnosis');
+      const savedInt = localStorage.getItem('intolerances');
+      if (savedDx) setDiagnosis(savedDx);
+      if (savedInt) setIntolerances(savedInt);
+    } catch {}
+  }, []);
 
   // Современные стили для полей
   const modernFieldStyle: React.CSSProperties = {
@@ -288,6 +306,7 @@ const Calculator: React.FC = () => {
     const speciesAlg = animalData.species === 'собака' ? 'dog' : 'cat';
     const activityMap: any = {
       'склонность к ожирению': 'obesity_prone',
+      'низкая активность': 'low',
       'нормальная активность': 'moderate',
       'высокая активность': 'high'
     };
@@ -296,16 +315,19 @@ const Calculator: React.FC = () => {
       'беременность >5 недель': 'preg_5_plus',
       'лактация': 'lactation'
     };
+    // Если пользователь оставил формат возраста 'лет', но указал возраст < 1,
+    // считаем это щенком/котенком и используем месяцы для перехода в ветку роста
+    const effectiveAgeUnit = (ageFormat === 'years' && (animalData.age || 0) < 1) ? 'months' : ageFormat;
     const calculated = calculateMEAlgorithm({
       species: speciesAlg as any,
       age: animalData.age || 0,
-      ageUnit: ageFormat,
+      ageUnit: effectiveAgeUnit as any,
       weight: animalData.targetWeight || 0,
       bcs: (animalData.condition as any) || 5,
       activity: (activityMap[animalData.activity || 'нормальная активность'] || 'moderate') as any,
       status: (statusMap[animalData.status || ''] || 'none') as any,
       adultWeight: animalData.adultWeight || 0,
-      lactationWeek: animalData.lactationWeeks || 0,
+      lactationWeek: 0,
       litterCount: 0
     });
     setEnergyNeed(calculated);
@@ -321,7 +343,7 @@ const Calculator: React.FC = () => {
     // Сохраняем диагноз и непереносимости отдельно
     localStorage.setItem('diagnosis', diagnosis);
     localStorage.setItem('intolerances', intolerances);
-  }, [animalData, energyNeed, diagnosis, intolerances]);
+  }, [animalData, energyNeed, diagnosis, intolerances, ageFormat]);
 
   const handleInputChange = (field: keyof AnimalEnergyData, value: any) => {
     setAnimalData(prev => ({
@@ -415,6 +437,54 @@ const Calculator: React.FC = () => {
               <label style={modernLabelStyle}>вид животного</label>
             </div>
 
+            {/* Переключатель Щенок / Котенок */}
+            <div style={fieldContainerStyle}>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setJuvenile('puppy');
+                    if (animalData.species !== 'собака') handleInputChange('species', 'собака');
+                    if (ageFormat !== 'months') setAgeFormat('months');
+                  }}
+                  style={{
+                    ...modernFieldStyle,
+                    padding: '10px 14px',
+                    width: 'auto',
+                    cursor: 'pointer',
+                    background: juvenile === 'puppy' ? 'linear-gradient(135deg, #00C851 0%, #33B5E5 100%)' : 'rgba(255,255,255,0.9)',
+                    color: juvenile === 'puppy' ? 'white' : '#2d3748',
+                    borderColor: juvenile === 'puppy' ? 'transparent' : 'rgba(0, 200, 81, 0.2)'
+                  }}
+                >
+                  🐶 Щенок
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setJuvenile('kitten');
+                    if (animalData.species !== 'кошка') handleInputChange('species', 'кошка');
+                    if (ageFormat !== 'months') setAgeFormat('months');
+                  }}
+                  style={{
+                    ...modernFieldStyle,
+                    padding: '10px 14px',
+                    width: 'auto',
+                    cursor: 'pointer',
+                    background: juvenile === 'kitten' ? 'linear-gradient(135deg, #00C851 0%, #33B5E5 100%)' : 'rgba(255,255,255,0.9)',
+                    color: juvenile === 'kitten' ? 'white' : '#2d3748',
+                    borderColor: juvenile === 'kitten' ? 'transparent' : 'rgba(0, 200, 81, 0.2)'
+                  }}
+                >
+                  🐱 Котенок
+                </button>
+              </div>
+              <label style={modernLabelStyle}>юный</label>
+              <div style={{ fontSize: '12px', color: '#666', marginTop: '6px' }}>
+                При выборе автоматически устанавливается формат возраста «мес.» для корректного расчета роста
+              </div>
+            </div>
+
             <div style={fieldContainerStyle}>
               <select
                 value={animalData.gender}
@@ -479,6 +549,7 @@ const Calculator: React.FC = () => {
                 style={modernSelectStyle}
               >
                 <option value="склонность к ожирению">🛌 Склонность к ожирению</option>
+                <option value="низкая активность">🧘 Низкая активность</option>
                 <option value="нормальная активность">🚶 Нормальная активность</option>
                 <option value="высокая активность">🏃 Высокая активность</option>
               </select>
@@ -499,6 +570,8 @@ const Calculator: React.FC = () => {
               </select>
               <label style={modernLabelStyle}>статус</label>
             </div>
+
+            {/* По требованию заказчика лактацию убираем на этом этапе (поля и ветка выборов неделей не отображаются) */}
           </div>
 
           {/* Группа 2: Персональные данные */}
@@ -562,55 +635,48 @@ const Calculator: React.FC = () => {
               <label style={modernLabelStyle}>кличка</label>
             </div>
 
-            <div style={fieldContainerStyle}>
-              <input
-                type="text"
-                value={animalData.owner}
-                onChange={(e) => handleInputChange('owner', e.target.value)}
-                style={modernFieldStyle}
-                placeholder="Введите имя владельца"
-                onFocus={(e) => Object.assign(e.target.style, modernFocusStyle)}
-                onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: 'none', transform: 'none' })}
-              />
-              <label style={modernLabelStyle}>владелец</label>
-            </div>
+            {/* поле Владелец удалено по требованию (избежание ввода ПДн) */}
 
-            <div style={fieldContainerStyle}>
-              <textarea
-                value={diagnosis}
-                onChange={(e) => setDiagnosis(e.target.value)}
-                style={modernTextareaStyle}
-                placeholder="Основной диагноз (при наличии)"
-                onFocus={(e) => Object.assign(e.target.style, modernFocusStyle)}
-                onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: 'none', transform: 'none' })}
-              />
-              <label style={modernLabelStyle}>🏥 диагноз</label>
-            </div>
+            {isPro ? (
+              <>
+                <div style={fieldContainerStyle}>
+                  <textarea
+                    value={diagnosis}
+                    onChange={(e) => setDiagnosis(e.target.value)}
+                    style={modernTextareaStyle}
+                    placeholder="Основной диагноз (PRO)"
+                    onFocus={(e) => Object.assign(e.target.style, modernFocusStyle)}
+                    onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: 'none', transform: 'none' })}
+                  />
+                  <label style={modernLabelStyle}>🏥 диагноз</label>
+                </div>
 
-            <div style={fieldContainerStyle}>
-              <textarea
-                value={intolerances}
-                onChange={(e) => setIntolerances(e.target.value)}
-                style={modernTextareaStyle}
-                placeholder="Непереносимости и аллергии"
-                onFocus={(e) => Object.assign(e.target.style, modernFocusStyle)}
-                onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: 'none', transform: 'none' })}
-              />
-              <label style={modernLabelStyle}>⚠️ непереносимости</label>
-            </div>
+                <div style={fieldContainerStyle}>
+                  <textarea
+                    value={intolerances}
+                    onChange={(e) => setIntolerances(e.target.value)}
+                    style={modernTextareaStyle}
+                    placeholder="Непереносимости и аллергии (PRO)"
+                    onFocus={(e) => Object.assign(e.target.style, modernFocusStyle)}
+                    onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: 'none', transform: 'none' })}
+                  />
+                  <label style={modernLabelStyle}>⚠️ непереносимости</label>
+                </div>
+              </>
+            ) : (
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 152, 0, 0.1) 100%)',
+                border: '2px solid rgba(255, 193, 7, 0.2)',
+                borderRadius: '12px',
+                padding: '16px',
+                color: '#7c2d12'
+              }}>
+                Поля «Диагноз» и «Непереносимости» доступны только в PRO‑версии. 
+                Оформите подписку, чтобы использовать профессиональные поля.
+              </div>
+            )}
 
-            <div style={fieldContainerStyle}>
-              <input
-                type="text"
-                value={animalData.contact}
-                onChange={(e) => handleInputChange('contact', e.target.value)}
-                style={modernFieldStyle}
-                placeholder="Введите контакт"
-                onFocus={(e) => Object.assign(e.target.style, modernFocusStyle)}
-                onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: 'none', transform: 'none' })}
-              />
-              <label style={modernLabelStyle}>контакт</label>
-            </div>
+            {/* поле Контакт удалено по требованию (избежание ввода ПДн) */}
           </div>
 
           {/* Группа 3: Весовые характеристики */}
