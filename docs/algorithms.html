@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>VetFormuLab — Алгоритмы и формулы (демо-конфигурация)</title>
+  <style>
+    body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color:#1e293b; margin:40px; }
+    h1 { font-size: 26px; margin: 0 0 10px; }
+    h2 { font-size: 20px; margin: 26px 0 8px; color:#0f5132; }
+    h3 { font-size: 16px; margin: 18px 0 6px; color:#0b5ed7; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:2px 6px; }
+    pre { padding:12px; overflow:auto; }
+    .small { color:#64748b; font-size:12px; }
+    ul { margin: 8px 0 8px 20px; }
+    .box { border:1px solid #e2e8f0; border-radius:10px; padding:14px; background:#ffffff; }
+    .kbd { border:1px solid #cbd5e1; padding:1px 6px; border-radius:4px; background:#f8fafc; }
+  </style>
+</head>
+<body>
+  <h1>VetFormuLab — Алгоритмы и формулы (демо-конфигурация)</h1>
+  <div class="small">Версия документа: 1.0 • Сгенерировано автоматически из демо‑кода</div>
+
+  <h2>1) Расчетный (идеальный) вес из BCS</h2>
+  <div class="box">
+    Источник: <code>x2-frontend-main/src/utils/calculateIdealWeight.ts</code>
+    <h3>Формула (упрощенная в демо)</h3>
+    <ul>
+      <li>Если BCS = 5 → <code>ideal = currentWeight</code></li>
+      <li>Иначе: используется коэффициент <code>correctionFactor = 0.12</code> (12% на балл BCS от 5):
+        <ul>
+          <li>BCS &lt; 5: <code>ideal = current × (1 + (5 − BCS) × 0.12)</code></li>
+          <li>BCS &gt; 5: <code>ideal = current × (1 − (BCS − 5) × 0.12)</code></li>
+        </ul>
+      </li>
+      <li>Округление: до 0.1 кг</li>
+    </ul>
+    <div class="small">Комментарий: это упрощенная модель «±12% от текущего веса за единицу BCS».</div>
+  </div>
+
+  <h2>2) Потребность в энергии (ME) — упрощенная</h2>
+  <div class="box">
+    Источник: <code>x2-frontend-main/src/utils/calculateEnergyNeed.ts</code>
+    <h3>Алгоритм</h3>
+    <ul>
+      <li>Идеальный вес для расчетов: <code>targetWeight</code> (из калькулятора)</li>
+      <li>Базовый обмен (RER): <code>70 × (targetWeight ^ 0.75)</code></li>
+      <li>Мультипликатор активности:
+        <ul>
+          <li>Кастрированный: склонность к ожирению → 1.2, иначе 1.4</li>
+          <li>Интактный → 1.6</li>
+          <li>Беременность 1–4 недели → 1.8</li>
+          <li>Беременность &gt;5 недель → 2.0</li>
+          <li>Лактация → <code>2.0 + 0.25 × недели лактации</code></li>
+        </ul>
+      </li>
+      <li>Итог: <code>ME = RER × multiplier × meCoefficient</code>; округление до сотых</li>
+    </ul>
+  </div>
+
+  <h2>3) Расширенный алгоритм ME (страница «Калькулятор»)</h2>
+  <div class="box">
+    Источник: <code>x2-frontend-main/src/pages/Calculator.tsx</code>, функция <code>calculateMEAlgorithm</code>
+    <h3>Ключевые ветви</h3>
+    <ul>
+      <li>Беременность (собаки/кошки): степенные формулы по массе (<code>^0.75</code> у собак, <code>^0.67</code> у кошек) с заранее заданными коэффициентами.</li>
+      <li>Лактация: коэффициенты по неделям лактации и числу щенков/котят.</li>
+      <li>Взрослые:
+        <ul>
+          <li>Собаки: 95/110/130 × BW^0.75, в зависимости от активности/возраста</li>
+          <li>Кошки: 65/75/100 × BW^0.67, в зависимости от активности</li>
+        </ul>
+      </li>
+      <li>Щенки/котята: ступенчатые формулы по возрасту в неделях и наличию ожидаемого взрослого веса.</li>
+      <li>Используется «операционный вес» <code>oBW = weight × f(BCS)</code> для коррекции массы.</li>
+    </ul>
+  </div>
+
+  <h2>4) Пересчет показателей в «Аналитике»</h2>
+  <div class="box">
+    Источник: <code>x2-frontend-main/src/pages/Comparisons.tsx</code>
+    <h3>Режимы</h3>
+    <ul>
+      <li><b>Как в базе</b>: отображение значений без перерасчета; Ca/P показываются в мг/100 г.</li>
+      <li><b>На 1000 ккал</b>:
+        <ul>
+          <li>Масштаб: <code>value × (1000 / ME)</code></li>
+          <li>Влажность (%): не изменяется</li>
+          <li>Витамины: из МЕ/кг → МЕ/1000 ккал</li>
+        </ul>
+      </li>
+      <li><b>На 100 г сухого вещества</b>:
+        <ul>
+          <li>Влажность = 0</li>
+          <li>Прочее: <code>value × 100 / (100 − moisture)</code></li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+
+  <h2>5) Категория корма (полнорационный / дополнительный / терапевтический)</h2>
+  <div class="box">
+    Источник: <code>x2-backend-main/src/routes/feeds.js</code>
+    <h3>Правило формирования <code>feed_category</code></h3>
+    <ul>
+      <li><code>category ∈ { diet, weight_loss }</code> → «терапевтический»</li>
+      <li><code>type = treats</code> → «дополнительный»</li>
+      <li>Иначе → «полнорационный»</li>
+    </ul>
+  </div>
+
+  <h2>6) Импорт из Google Sheets (подготовлено)</h2>
+  <div class="box">
+    Скрипт: <code>x2-backend-main/scripts/import-google-sheets.js</code>
+    <ul>
+      <li>Настраивается <code>SPREADSHEET_ID</code> и диапазон <code>RANGE</code>.</li>
+      <li>Нормализация столбцов (вид животного, тип, возраст/назначение, бренд, МЭ, БЖК, минералы, витамины) в формат базы.</li>
+      <li>Фильтры фронтенда работают поверх этих нормализованных данных теми же правилами, что и в демо.</li>
+    </ul>
+  </div>
+
+  <h2>Пути к исходникам</h2>
+  <div class="box">
+    <ul>
+      <li>Идеальный вес: <code>x2-frontend-main/src/utils/calculateIdealWeight.ts</code></li>
+      <li>Упрощенное ME: <code>x2-frontend-main/src/utils/calculateEnergyNeed.ts</code></li>
+      <li>Расширенное ME: <code>x2-frontend-main/src/pages/Calculator.tsx</code> (<code>calculateMEAlgorithm</code>)</li>
+      <li>Аналитика/пересчеты: <code>x2-frontend-main/src/pages/Comparisons.tsx</code></li>
+      <li>Категория корма на бэкенде: <code>x2-backend-main/src/routes/feeds.js</code></li>
+      <li>Импорт из Google Sheets: <code>x2-backend-main/scripts/import-google-sheets.js</code></li>
+    </ul>
+  </div>
+
+  <p class="small">Если потребуется, могу выслать расчетные примеры (вес/BCS → идеальный вес и ME) в отдельном приложении.</p>
+</body>
+</html>
+

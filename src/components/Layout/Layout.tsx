@@ -288,75 +288,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   </span>
                 </div>
 
-                {/* User Profile */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  background: 'rgba(255, 255, 255, 0.8)',
-                  border: '2px solid rgba(0, 200, 81, 0.15)',
-                  borderRadius: '18px',
-                  padding: '8px 12px',
-                  gap: '10px',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  position: 'relative',
-                  overflow: 'hidden'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 1)';
-                  e.currentTarget.style.borderColor = 'rgba(0, 200, 81, 0.3)';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 200, 81, 0.2)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.8)';
-                  e.currentTarget.style.borderColor = 'rgba(0, 200, 81, 0.15)';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-                >
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #00C851 0%, #33B5E5 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontSize: '14px',
-                    fontWeight: '700',
-                    boxShadow: '0 4px 12px rgba(0, 200, 81, 0.3)'
-                  }}>
-                    {(user?.contact_person || 'Dr')[0].toUpperCase()}
-                  </div>
-                  
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    minWidth: '0'
-                  }}>
-                    <div style={{
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      color: '#2d3748',
-                      textOverflow: 'ellipsis',
-                      overflow: 'hidden',
-                      whiteSpace: 'nowrap',
-                      maxWidth: '100px'
-                    }}>
-                      {user?.contact_person || 'Doctor'}
-                    </div>
-                    <div style={{
-                      fontSize: '11px',
-                      color: '#00C851',
-                      fontWeight: '600'
-                    }}>
-                      {user?.subscription_type === 'basic' ? 'Basic Plan' : 'Pro Plan'}
-                    </div>
-                  </div>
-                </div>
+                {/* Profile badge removed by requirement (no avatar circle) */}
 
                 {/* Logout Button */}
                 <button 
@@ -779,6 +711,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         @keyframes slideDown {
           from { opacity: 0; transform: translateY(-10px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Mobile navigation behavior */
+        @media (max-width: 900px) {
+          .desktop-nav { display: none !important; }
+          .mobile-menu-toggle { display: inline-flex !important; }
         }
       `}</style>
     </div>

@@ -43,16 +43,16 @@ const Comparisons: React.FC = () => {
   const [animalData, setAnimalData] = useState<AnimalEnergyData>({
     species: 'собака',
     gender: 'самец',
-    age: 3,
+    age: 0,
     condition: 5,
-    name: 'Мой питомец',
+    name: '',
     breed: '',
     status: 'кастрированный',
     activity: 'нормальная активность',
     owner: '',
-    currentWeight: 15,
-    targetWeight: 15,
-    adultWeight: 15,
+    currentWeight: 0,
+    targetWeight: 0,
+    adultWeight: 0,
     lactationWeeks: 0,
     contact: '',
     meCoefficient: 1
@@ -215,6 +215,14 @@ const Comparisons: React.FC = () => {
       console.error('Ошибка загрузки данных животного:', error);
     }
   };
+
+  // Синхронизация изменений из Аналитики обратно в localStorage, чтобы обе вкладки были связаны
+  useEffect(() => {
+    try {
+      const dataToSave = { ...animalData };
+      localStorage.setItem('animalData', JSON.stringify(dataToSave));
+    } catch {}
+  }, [animalData]);
 
   // Автоматический расчет идеального веса при изменении current weight или condition
   useEffect(() => {
@@ -403,7 +411,6 @@ const Comparisons: React.FC = () => {
                       if (property === 'metabolizable_energy') return `${value} ккал/кг`;
                       if (property === 'calcium') return `${(value * 1000).toFixed(0)} мг/100г`;
                       if (property === 'phosphorus') return `${(value * 1000).toFixed(0)} мг/100г`;
-                      if (['crude_protein', 'crude_fat', 'crude_fiber', 'ash'].includes(property as string)) return `${value} г`;
                       if ((property as string) === 'vitamin_a' || (property as string) === 'vitamin_d3') return `${value} МЕ/100г`;
                       return `${value}%`;
                     })()}
@@ -680,18 +687,7 @@ const Comparisons: React.FC = () => {
                 onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: '0 3px 15px rgba(0, 200, 81, 0.08)', transform: 'none' })}
               />
             </div>
-            <div>
-              <label style={modernLabelStyle}>👤 Владелец</label>
-              <input 
-                type="text" 
-                value={animalData.owner} 
-                onChange={e => setAnimalData({...animalData, owner: e.target.value})}
-                style={modernFieldStyle}
-                placeholder="Введите имя владельца"
-                onFocus={(e) => Object.assign(e.target.style, modernFocusStyle)}
-                onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: '0 3px 15px rgba(0, 200, 81, 0.08)', transform: 'none' })}
-              />
-            </div>
+            {/* Поле владельца скрыто (ПДн не собираем) */}
             <div>
               <label style={modernLabelStyle}>🔢 Кондиция (1-9)</label>
               <input 
@@ -1131,7 +1127,7 @@ const Comparisons: React.FC = () => {
               </h2>
               <div style={{ fontSize: '14px', opacity: 0.9 }}>
                  {compareMode === 'as_is' && 'Значения как в базе данных (на 100г продукта). Витамины: МЕ/100г'}
-                 {compareMode === 'per_1000kcal' && 'Значения пересчитаны на 1000 ккал МЭ. Витамины: МЕ/1000 ккал'}
+                 {compareMode === 'per_1000kcal' && 'Значения пересчитаны на 1000 ккал МЭ (МЭ = 1000). Витамины: МЕ/1000 ккал'}
                  {compareMode === 'per_100g_dm' && 'Значения пересчитаны на 100г сухого вещества. Влажность = 0%'}
               </div>
             </div>
@@ -1195,8 +1191,10 @@ const Comparisons: React.FC = () => {
                         
                         // Пересчёт значений
                         if (compareMode === 'per_1000kcal' && key !== 'ingredients') {
-  // Оставляем value как есть — пересчёт выполнит recalculateValue
-}
+                          if (key === 'metabolizable_energy') {
+                            value = 1000; // отображаем 1000 для МЭ в этом режиме
+                          }
+                        }
                         if (compareMode === 'per_100g_dm' && key !== 'ingredients') {
                           const dryMatter = typeof feed.moisture === 'number' ? 100 - feed.moisture : 90;
                           if (key === 'moisture') {
@@ -1224,21 +1222,9 @@ const Comparisons: React.FC = () => {
                         }}>
                            {typeof displayValue === 'number' ? (() => {
                             // Конвертация для разных типов питательных веществ
-                            if (key === 'phosphorus') {
-                              if (compareMode === 'per_1000kcal') {
-                                return displayValue.toFixed(0); // мг/1000 ккал (уже в мг)
-                              } else {
-                                return (displayValue * 1000).toFixed(0); // мг/100г
-                              }
-                            } else if (key === 'calcium') {
-                              if (compareMode === 'per_1000kcal') {
-                                return displayValue.toFixed(0); // мг/1000 ккал (уже в мг)
-                              } else {
-                                return (displayValue * 1000).toFixed(0); // мг/100г
-                              }
-                              } else if (key === 'vitamin_a' || key === 'vitamin_d3') {
-                                // Витамины уже в МЕ/100г в базовом, пересчитываются в recalculateValue для 1000 ккал
-                                return displayValue.toFixed(0);
+                            if (key === 'phosphorus' || key === 'calcium') {
+                              // В as_is Ca/P уже в мг/100г; в per_1000kcal — пересчитаны в мг/1000 ккал
+                              return displayValue.toFixed(0);
                             } else if (['crude_protein', 'crude_fat', 'crude_fiber', 'ash'].includes(key)) {
                               return displayValue.toFixed(2); // граммы на 100г продукта (проценты уже означают г/100г)
                             } else {

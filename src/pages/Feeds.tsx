@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import config from '../config';
 import { Link } from 'react-router-dom'; // Added Link import
+import { useAuth } from '../contexts/AuthContext';
 
 interface Feed {
   id: number;
@@ -29,6 +30,8 @@ interface Feed {
 }
 
 const Feeds: React.FC = () => {
+  const { isAuthenticated, user } = useAuth();
+  const isPro = isAuthenticated && (user?.subscription_type === 'pro' || user?.subscription_type === 'premium');
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -80,6 +83,15 @@ const Feeds: React.FC = () => {
 
   // --- СТЕЙТ ДЛЯ ФОРМУЛЫ МЭ ---
   const [meFormula, setMeFormula] = useState<'standard' | 'nrc'>('standard');
+
+  // Mobile responsiveness
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const update = () => setIsMobile(window.innerWidth <= 768);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
 
   // Современные стили для полей
   const modernFieldStyle: React.CSSProperties = {
@@ -299,6 +311,13 @@ const feedsBySpecies = selectedAnimalType
   const uniqueBrands = Array.from(new Set(feedsBySpecies.map(f => f.brand).filter(Boolean)));
   const uniqueFeedCategories = Array.from(new Set(feedsBySpecies.map(f => (f as any).feed_category || '').filter(Boolean)));
   const uniquePurposes = Array.from(new Set(feedsBySpecies.map(f => f.category).filter(Boolean)));
+
+  // Если пользователь не PRO, запрещаем выбирать "терапевтический"
+  useEffect(() => {
+    if (!isPro && selectedFeedCategory === 'терапевтический') {
+      setSelectedFeedCategory('');
+    }
+  }, [isPro, selectedFeedCategory]);
 if (loading) {
     return (
       <div style={{
@@ -355,14 +374,14 @@ if (loading) {
       }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1fr auto',
+          gridTemplateColumns: isMobile ? '1fr' : (isPro ? '1fr auto' : '1fr'),
           gap: '20px',
           alignItems: 'center'
         }}>
           {/* Фильтры */}
           <div style={{
             display: 'grid',
-                gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr',
+                gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr 1fr 1fr 1fr',
             gap: '15px'
           }}>
             <input
@@ -421,13 +440,15 @@ if (loading) {
                   onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: '0 3px 15px rgba(0, 200, 81, 0.08)', transform: 'none' })}
                 >
                   <option value="">Все категории корма</option>
-                  {(
-                    (uniqueFeedCategories && uniqueFeedCategories.length > 0)
+                  {(() => {
+                    const listFromData = (uniqueFeedCategories && uniqueFeedCategories.length > 0)
                       ? uniqueFeedCategories
-                      : ['полнорационный','дополнительный','терапевтический']
-                  ).map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
+                      : ['полнорационный','дополнительный','терапевтический'];
+                    const filtered = isPro ? listFromData : listFromData.filter(c => c !== 'терапевтический');
+                    return filtered.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ));
+                  })()}
                 </select>
 
             <select
@@ -463,33 +484,35 @@ if (loading) {
           </div>
 
           {/* Кнопка добавления */}
-          <button
-            onClick={() => setShowAddForm(true)}
-            style={{
-              padding: '12px 24px',
-              background: 'linear-gradient(135deg, #00C851 0%, #33B5E5 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '10px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'transform 0.3s ease',
-              boxShadow: '0 4px 16px rgba(0, 200, 81, 0.3)'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
-          >
-            ➕ Добавить корм
-          </button>
+          {isPro && (
+            <button
+              onClick={() => setShowAddForm(true)}
+              style={{
+                padding: '12px 24px',
+                background: 'linear-gradient(135deg, #00C851 0%, #33B5E5 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '10px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'transform 0.3s ease',
+                boxShadow: '0 4px 16px rgba(0, 200, 81, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              ➕ Добавить корм
+            </button>
+          )}
         {/* Диапазоны БЖК */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
           gap: '15px',
           marginTop: '15px'
         }}>
@@ -763,7 +786,7 @@ if (loading) {
       )}
 
       {/* --- ФОРМА ДОБАВЛЕНИЯ КОРМА --- */}
-      {showAddForm && (
+      {isPro && showAddForm && (
         <div style={{
           position: 'fixed',
           top: 0,
