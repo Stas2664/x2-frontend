@@ -3,7 +3,6 @@ import config from '../config';
 import { AnimalEnergyData } from '../types';
 import { calculateEnergyNeed } from '../utils/calculateEnergyNeed';
 import { calculateIdealWeight } from '../utils/calculateIdealWeight';
-import { calculateMEAlgorithm } from '../utils/calculateMEAdvanced';
 
 interface Feed {
   id: number;
@@ -44,21 +43,21 @@ const Comparisons: React.FC = () => {
   const [animalData, setAnimalData] = useState<AnimalEnergyData>({
     species: 'собака',
     gender: 'самец',
-    age: 0,
+    age: 3,
     condition: 5,
-    name: '',
+    name: 'Мой питомец',
     breed: '',
     status: 'кастрированный',
     activity: 'нормальная активность',
     owner: '',
-    currentWeight: 0,
-    targetWeight: 0,
-    adultWeight: 0,
+    currentWeight: 15,
+    targetWeight: 15,
+    adultWeight: 15,
     lactationWeeks: 0,
     contact: '',
     meCoefficient: 1
   });
-  const [energyNeed, setEnergyNeed] = useState<number>(0);
+  const [energyNeed, setEnergyNeed] = useState<number>(calculateEnergyNeed(animalData));
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   // --- СТЕЙТЫ ДЛЯ ФИЛЬТРОВ И ВЫБОРА ПОКАЗАТЕЛЕЙ ---
@@ -217,14 +216,6 @@ const Comparisons: React.FC = () => {
     }
   };
 
-  // Синхронизация изменений из Аналитики обратно в localStorage, чтобы обе вкладки были связаны
-  useEffect(() => {
-    try {
-      const dataToSave = { ...animalData };
-      localStorage.setItem('animalData', JSON.stringify(dataToSave));
-    } catch {}
-  }, [animalData]);
-
   // Автоматический расчет идеального веса при изменении current weight или condition
   useEffect(() => {
     if (animalData.currentWeight && animalData.currentWeight > 0 && 
@@ -240,31 +231,7 @@ const Comparisons: React.FC = () => {
   }, [animalData.currentWeight, animalData.condition, animalData.targetWeight]);
 
   useEffect(() => {
-    const speciesAlg = animalData.species === 'собака' ? 'dog' : 'cat';
-    const activityMap: any = {
-      'склонность к ожирению': 'obesity_prone',
-      'низкая активность': 'low',
-      'нормальная активность': 'moderate',
-      'высокая активность': 'high'
-    };
-    const statusMap: any = {
-      'беременность 1-4 недели': 'preg_1_4',
-      'беременность >5 недель': 'preg_5_plus',
-      'лактация': 'lactation'
-    };
-    const calc = calculateMEAlgorithm({
-      species: speciesAlg as any,
-      age: animalData.age || 0,
-      ageUnit: 'years',
-      weight: animalData.targetWeight || 0,
-      bcs: (animalData.condition as any) || 5,
-      activity: (activityMap[animalData.activity || 'нормальная активность'] || 'moderate') as any,
-      status: (statusMap[animalData.status || ''] || 'none') as any,
-      adultWeight: animalData.adultWeight || 0,
-      lactationWeek: animalData.lactationWeeks || 0,
-      litterCount: 0
-    });
-    setEnergyNeed(calc);
+    setEnergyNeed(calculateEnergyNeed(animalData));
   }, [animalData]);
 
   const loadSelectedFeeds = () => {
@@ -435,7 +402,8 @@ const Comparisons: React.FC = () => {
                     {(() => {
                       if (property === 'metabolizable_energy') return `${value} ккал/кг`;
                       if (property === 'calcium') return `${(value * 1000).toFixed(0)} мг/100г`;
-                      if (property === 'phosphorus') return `${(value * 1000).toFixed(0)} мг/100г`;
+                      if (property === 'phosphorus') return `${(value * 10).toFixed(0)} мг/100г`;
+                      if (['crude_protein', 'crude_fat', 'crude_fiber', 'ash'].includes(property as string)) return `${value} г`;
                       if ((property as string) === 'vitamin_a' || (property as string) === 'vitamin_d3') return `${value} МЕ/100г`;
                       return `${value}%`;
                     })()}
@@ -453,43 +421,31 @@ const Comparisons: React.FC = () => {
 
   // --- ФУНКЦИИ ПЕРЕСЧЕТА ---
   const recalculateValue = (value: number, feed: any, nutrient: string) => {
-    if (compareMode === 'as_is') return value;
-
-    if (compareMode === 'per_1000kcal') {
-      const me = feed.metabolizable_energy || feed.metabolic_energy;
-      if (!me || nutrient === 'moisture') return value; // влажность не меняем
-
-      // База: БЖК/зола/минералы в процентах (г/100г), Ca/P в % (конвертим в мг ниже при выводе), витамины в МЕ/кг
-      const factor = me < 1000 ? (1000 / me) : (10000 / me); // перевод на 1000 ккал
-
-      // Белок/жир/клетчатка/зола: база г/100г → г/1000 ккал
-      if (['crude_protein','crude_fat','crude_fiber','ash'].includes(nutrient)) {
-        return value * factor;
-      }
-
-      // Кальций/фосфор: база мг/100г → мг/1000 ккал
-      if (['calcium','phosphorus'].includes(nutrient)) {
-        return value * factor;
-      }
-
-      // Витамины: база IU/кг → IU/1000 ккал
-      if (['vitamin_a','vitamin_d3'].includes(nutrient)) {
-        const mePerKg = me < 1000 ? me * 10 : me; // гарантируем ккал/кг
-        return (value * 1000) / mePerKg; // IU/кг -> IU/1000 ккал
-      }
-
+    if (compareMode === 'as_is') {
       return value;
+    } else if (compareMode === 'per_1000kcal') {
+      // Пересчет на 1000 ккал МЭ (влажность не меняем)
+      if (nutrient === 'moisture') return value;
+      const me = feed.metabolizable_energy || feed.metabolic_energy;
+      if (!me) return value;
+      return (value * 1000) / me;
+    } else if (compareMode === 'per_100g_dm') {
+      // Пересчет на 100 г сухого вещества (влажность = 0 по определению)
+      if (nutrient === 'moisture') return 0;
+      const moisture = typeof feed.moisture === 'number' ? feed.moisture : 10; // % как есть
+      const dryMatter = 100 - moisture;
+      if (dryMatter <= 0) return value;
+      return (value * 100) / dryMatter;
     }
-
-    if (compareMode === 'per_100g_dm') {
-      if (nutrient === 'moisture') return 0; // воды нет в СВ
-      const moisture = typeof feed.moisture === 'number' ? feed.moisture : 10;
-      const dm = 100 - moisture;
-      return dm > 0 ? (value * 100) / dm : value;
-    }
-
     return value;
   };
+
+  // Нормализация единиц для Ca/P: если значение <= 20, считаем что это г/100г и конвертируем в мг/100г; иначе уже мг/100г
+  const toMg100g = (val: number): number => {
+    if (val === null || val === undefined || Number.isNaN(val as any)) return 0;
+    return val <= 20 ? val * 1000 : val;
+  };
+;
 
   const getRecalculatedNorm = (baseNorm: string, feed: any) => {
     const numericNorm = parseFloat(baseNorm.replace(/[^\d.,]/g, '').replace(',', '.'));
@@ -594,8 +550,7 @@ const Comparisons: React.FC = () => {
               '0 4px 15px rgba(0, 200, 81, 0.3)' : 
               '0 2px 8px rgba(0, 0, 0, 0.1)'
           }}
-          onClick={() => setShowAnimalForm(!showAnimalForm)}
-          >
+          onClick={() => setShowAnimalForm(!showAnimalForm)}>
             <div style={{
               position: 'absolute',
               top: '2px',
@@ -656,8 +611,7 @@ const Comparisons: React.FC = () => {
                 onChange={e => setAnimalData({...animalData, species: e.target.value as any})}
                 style={modernSelectStyle}
                 onFocus={(e) => Object.assign(e.target.style, modernFocusStyle)}
-                onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: '0 3px 15px rgba(0, 200, 81, 0.08)', transform: 'none' })}
-              >
+                onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: '0 3px 15px rgba(0, 200, 81, 0.08)', transform: 'none' })}>
                 <option value="собака">🐕 Собака</option>
                 <option value="кошка">🐱 Кошка</option>
                 
@@ -670,8 +624,7 @@ const Comparisons: React.FC = () => {
                 onChange={e => setAnimalData({...animalData, gender: e.target.value as any})}
                 style={modernSelectStyle}
                 onFocus={(e) => Object.assign(e.target.style, modernFocusStyle)}
-                onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: '0 3px 15px rgba(0, 200, 81, 0.08)', transform: 'none' })}
-              >
+                onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: '0 3px 15px rgba(0, 200, 81, 0.08)', transform: 'none' })}>
                 <option value="самец">♂️ Самец</option>
                 <option value="самка">♀️ Самка</option>
               </select>
@@ -712,7 +665,18 @@ const Comparisons: React.FC = () => {
                 onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: '0 3px 15px rgba(0, 200, 81, 0.08)', transform: 'none' })}
               />
             </div>
-            {/* Поле владельца скрыто (ПДн не собираем) */}
+            <div>
+              <label style={modernLabelStyle}>👤 Владелец</label>
+              <input 
+                type="text" 
+                value={animalData.owner} 
+                onChange={e => setAnimalData({...animalData, owner: e.target.value})}
+                style={modernFieldStyle}
+                placeholder="Введите имя владельца"
+                onFocus={(e) => Object.assign(e.target.style, modernFocusStyle)}
+                onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: '0 3px 15px rgba(0, 200, 81, 0.08)', transform: 'none' })}
+              />
+            </div>
             <div>
               <label style={modernLabelStyle}>🔢 Кондиция (1-9)</label>
               <input 
@@ -734,8 +698,7 @@ const Comparisons: React.FC = () => {
                 onChange={e => setAnimalData({...animalData, status: e.target.value})}
                 style={modernSelectStyle}
                 onFocus={(e) => Object.assign(e.target.style, modernFocusStyle)}
-                onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: '0 3px 15px rgba(0, 200, 81, 0.08)', transform: 'none' })}
-              >
+                onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: '0 3px 15px rgba(0, 200, 81, 0.08)', transform: 'none' })}>
                 <option value="кастрированный">✂️ Кастрированный</option>
                 <option value="интактный">🔸 Интактный</option>
                 <option value="беременность 1-4 недели">🤱 Беременность 1-4 недели</option>
@@ -750,10 +713,8 @@ const Comparisons: React.FC = () => {
                 onChange={e => setAnimalData({...animalData, activity: e.target.value})}
                 style={modernSelectStyle}
                 onFocus={(e) => Object.assign(e.target.style, modernFocusStyle)}
-                onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: '0 3px 15px rgba(0, 200, 81, 0.08)', transform: 'none' })}
-              >
+                onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: '0 3px 15px rgba(0, 200, 81, 0.08)', transform: 'none' })}>
                 <option value="склонность к ожирению">😴 Склонность к ожирению</option>
-                <option value="низкая активность">🧘 Низкая активность</option>
                 <option value="нормальная активность">🚶 Нормальная активность</option>
                 <option value="высокая активность">🏃 Высокая активность</option>
               </select>
@@ -900,8 +861,7 @@ const Comparisons: React.FC = () => {
                 fontWeight: '600',
                 padding: '8px 16px',
                 cursor: 'pointer'
-              }}
-            >
+              }}>
               🔄 Выбрать другие корма
             </button>
           </div>
@@ -981,8 +941,7 @@ const Comparisons: React.FC = () => {
                       e.currentTarget.style.background = 'rgba(255, 255, 255, 0.5)';
                       e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.1)';
                     }
-                  }}
-                >
+                  }}>
                   <input
                     type="checkbox"
                     checked={compareFields.includes(field.key)}
@@ -1061,8 +1020,7 @@ const Comparisons: React.FC = () => {
                     e.currentTarget.style.transform = 'translateY(0)';
                     e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
                   }
-                }}
-              >
+                }}>
                 📋 Как в базе
               </button>
               <button 
@@ -1094,8 +1052,7 @@ const Comparisons: React.FC = () => {
                     e.currentTarget.style.transform = 'translateY(0)';
                     e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
                   }
-                }}
-              >
+                }}>
                 🔥 На 1000 ккал
               </button>
               <button 
@@ -1127,8 +1084,7 @@ const Comparisons: React.FC = () => {
                     e.currentTarget.style.transform = 'translateY(0)';
                     e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
                   }
-                }}
-              >
+                }}>
                 💧 На 100г сух. в-ва
               </button>
             </div>
@@ -1152,9 +1108,9 @@ const Comparisons: React.FC = () => {
                 📊 Сравнительная таблица кормов
               </h2>
               <div style={{ fontSize: '14px', opacity: 0.9 }}>
-                 {compareMode === 'as_is' && 'Значения как в базе данных (на 100г продукта). Витамины: МЕ/100г'}
-                 {compareMode === 'per_1000kcal' && 'Значения пересчитаны на 1000 ккал МЭ (МЭ = 1000). Витамины: МЕ/1000 ккал'}
-                 {compareMode === 'per_100g_dm' && 'Значения пересчитаны на 100г сухого вещества. Влажность = 0%'}
+                {compareMode === 'as_is' && 'Значения как в базе данных (на 100г продукта)'}
+                {compareMode === 'per_1000kcal' && 'Значения пересчитаны на 1000 ккал МЭ'}
+                {compareMode === 'per_100g_dm' && 'Значения пересчитаны на 100г сухого вещества'}
               </div>
             </div>
 
@@ -1207,18 +1163,89 @@ const Comparisons: React.FC = () => {
                         
                         // Специальная обработка для витаминов
                         if (key === 'vitamin_a') {
-                          // из базы: IU/кг → IU/100г
-                          value = (feed.vitamins?.vitamin_a || 0) * 0.1;
+                          value = (feed.vitamins?.vitamin_a || 0) * 0.1; // IU/kg -> IU/100г
                         } else if (key === 'vitamin_d3') {
-                          value = (feed.vitamins?.vitamin_d3 || 0) * 0.1;
+                          value = (feed.vitamins?.vitamin_d3 || 0) * 0.1; // IU/kg -> IU/100г
                         } else {
                           value = feed[key as keyof Feed];
                         }
                         
-                        // Пересчёт значений
+                        
+
+if (compareMode === 'per_1000kcal') {
+  // МЭ у нас хранится как ккал/100г
+  const mePer100g = (feed as any).metabolizable_energy ?? (feed as any).metabolic_energy ?? (feed as any).kcal_per_100g ?? (feed as any).kcalPer100g;
+  if (!mePer100g || mePer100g <= 0) {
+    displayValue = null;
+  } else {
+    // сколько граммов корма нужно для 1000 ккал
+    const gramsFor1000 = 100000 / mePer100g; // г
+
+    const percentKeys = ['protein','fat','fiber','ash','moisture','calcium','phosphorus','crude_protein','crude_fat','crude_fiber'];
+    const asGramsFromPercent = (percent: number) => (percent / 100) * gramsFor1000;
+    const asGramsFromGPer100g = (gPer100g: number) => gPer100g * (gramsFor1000 / 100);
+
+    if (column.key === 'moisture') {
+      // Влажность в режиме 1000 ккал не меняем (процент остаётся как есть)
+      displayValue = value;
+    } else if (percentKeys.includes(column.key)) {
+      // Значение задано в процентах (% от продукта)
+      const grams = asGramsFromPercent(value as number);
+      if (column.key === 'calcium' || column.key === 'phosphorus') {
+        displayValue = grams * 1000; // мг/1000 ккал
+      } else {
+        displayValue = grams; // г/1000 ккал
+      }
+    } else if (column.key === 'vitaminA' || column.key === 'vitaminD' || column.key === 'vitamin_a' || column.key === 'vitamin_d3') {
+      // Витамины: МЕ/кг -> МЕ/1000 ккал пропорционально массе
+      displayValue = (value as number) * (gramsFor1000 / 1000);
+    } else {
+      // Если где-то значение было в г/100г — пересчитаем как для г/100г
+      const grams = asGramsFromGPer100g(value as number);
+      displayValue = grams;
+    }
+  }
+}
+else {
+    // сколько граммов корма нужно для 1000 ккал
+    const gramsFor1000 = 1000000 / kcalPerKg; // г
+
+    const percentKeys = ['protein','fat','fiber','ash','moisture','calcium','phosphorus'];
+    const toMg100gSmart = (val: number): number => (val <= 20 ? val * 1000 : val); // г->мг, мг оставляем
+    const asGramsFromPercent = (percent: number) => (percent / 100) * gramsFor1000;
+    const asGramsFromGPer100g = (gPer100g: number) => gPer100g * (gramsFor1000 / 100);
+
+    if (column.key === 'moisture') {
+      // Влажность в режиме 1000 ккал не меняем (процент остаётся как есть)
+      displayValue = value;
+    } else if (percentKeys.includes(column.key)) {
+      // Значение задано в процентах (% от продукта)
+      const grams = asGramsFromPercent(value as number);
+      if (column.key === 'calcium' || column.key === 'phosphorus') {
+        displayValue = grams * 1000; // мг/1000 ккал
+      } else {
+        displayValue = grams; // г/1000 ккал
+      }
+    } else if (column.key === 'vitaminA' || column.key === 'vitaminD') {
+      // Витамины: МЕ/кг -> МЕ/1000 ккал пропорционально массе
+      displayValue = (value as number) * (gramsFor1000 / 1000);
+    } else {
+      // Если где-то значение было в г/100г — пересчитаем как для г/100г
+      const grams = asGramsFromGPer100g(value as number);
+      displayValue = grams;
+    }
+  }
+}
+
+// Пересчёт значений
                         if (compareMode === 'per_1000kcal' && key !== 'ingredients') {
-                          if (key === 'metabolizable_energy') {
-                            value = 1000; // отображаем 1000 для МЭ в этом режиме
+                          if (key === 'moisture') {
+                            // Влажность при 1000 ккал не меняется
+                            value = value;
+                          } else if (typeof value === 'number' && typeof feed.metabolizable_energy === 'number' && feed.metabolizable_energy) {
+                            value = (value / feed.metabolizable_energy) * 1000;
+                          } else {
+                            value = '';
                           }
                         }
                         if (compareMode === 'per_100g_dm' && key !== 'ingredients') {
@@ -1246,11 +1273,12 @@ const Comparisons: React.FC = () => {
                           fontWeight: '500',
                           background: 'white'
                         }}>
-                           {typeof displayValue === 'number' ? (() => {
+                          {typeof displayValue === 'number' ? (() => {
                             // Конвертация для разных типов питательных веществ
-                            if (key === 'phosphorus' || key === 'calcium') {
-                              // В as_is Ca/P уже в мг/100г; в per_1000kcal — пересчитаны в мг/1000 ккал
-                              return displayValue.toFixed(0);
+                            if (key === 'phosphorus') {
+                              return toMg100g(displayValue as number).toFixed(0); // мг/100г
+                            } else if (key === 'calcium') {
+                              return toMg100g(displayValue as number).toFixed(0); // мг/100г
                             } else if (['crude_protein', 'crude_fat', 'crude_fiber', 'ash'].includes(key)) {
                               return displayValue.toFixed(2); // граммы на 100г продукта (проценты уже означают г/100г)
                             } else {
@@ -1468,8 +1496,7 @@ const Comparisons: React.FC = () => {
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0)';
               e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 200, 81, 0.3)';
-            }}
-          >
+            }}>
             🍖 Перейти к выбору кормов
           </button>
         </div>

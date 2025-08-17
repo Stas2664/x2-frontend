@@ -14,8 +14,8 @@ export function calculateIdealWeight(currentWeight: number, condition: number): 
   }
 
   // Коэффициенты коррекции веса на основе BCS
-  // Каждая единица BCS соответствует примерно 10% изменения веса (по требованию заказчика)
-  const correctionFactor = 0.10; // 10% на единицу BCS
+  // Каждая единица BCS соответствует примерно 10-15% изменения веса
+  const correctionFactor = 0.12; // 12% на единицу BCS
   
   let targetWeight: number;
   

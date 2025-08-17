@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import config from '../config';
 import { Link } from 'react-router-dom'; // Added Link import
-import { useAuth } from '../contexts/AuthContext';
 
 interface Feed {
   id: number;
@@ -30,8 +29,6 @@ interface Feed {
 }
 
 const Feeds: React.FC = () => {
-  const { isAuthenticated, user } = useAuth();
-  const isPro = isAuthenticated && (user?.subscription_type === 'pro' || user?.subscription_type === 'premium');
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -83,15 +80,6 @@ const Feeds: React.FC = () => {
 
   // --- СТЕЙТ ДЛЯ ФОРМУЛЫ МЭ ---
   const [meFormula, setMeFormula] = useState<'standard' | 'nrc'>('standard');
-
-  // Mobile responsiveness
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const update = () => setIsMobile(window.innerWidth <= 768);
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, []);
 
   // Современные стили для полей
   const modernFieldStyle: React.CSSProperties = {
@@ -311,20 +299,6 @@ const feedsBySpecies = selectedAnimalType
   const uniqueBrands = Array.from(new Set(feedsBySpecies.map(f => f.brand).filter(Boolean)));
   const uniqueFeedCategories = Array.from(new Set(feedsBySpecies.map(f => (f as any).feed_category || '').filter(Boolean)));
   const uniquePurposes = Array.from(new Set(feedsBySpecies.map(f => f.category).filter(Boolean)));
-
-  // Если пользователь не PRO, запрещаем выбирать "терапевтический"
-  useEffect(() => {
-    if (!isPro && selectedFeedCategory === 'терапевтический') {
-      setSelectedFeedCategory('');
-    }
-  }, [isPro, selectedFeedCategory]);
-
-  // Список категорий для селекта: всегда показываем базовые пункты
-  const baseCategories = isPro 
-    ? ['полнорационный','дополнительный','терапевтический'] 
-    : ['полнорационный','дополнительный'];
-  const availableFeedCategories = Array.from(new Set([...baseCategories, ...uniqueFeedCategories]));
-
 if (loading) {
     return (
       <div style={{
@@ -370,7 +344,7 @@ if (loading) {
         </p>
       </div>
 
-          {/* Панель управления */}
+      {/* Панель управления */}
       <div style={{
         background: 'rgba(255, 255, 255, 0.9)',
         padding: '25px',
@@ -381,14 +355,14 @@ if (loading) {
       }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : (isPro ? '1fr auto' : '1fr'),
+          gridTemplateColumns: '1fr auto',
           gap: '20px',
           alignItems: 'center'
         }}>
           {/* Фильтры */}
           <div style={{
             display: 'grid',
-                gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr 1fr 1fr 1fr',
+            gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr',
             gap: '15px'
           }}>
             <input
@@ -439,18 +413,22 @@ if (loading) {
               <option value="cat">🐱 Кошки</option>
             </select>
 
-                <select
-                  value={selectedFeedCategory}
-                  onChange={(e) => setSelectedFeedCategory(e.target.value)}
-                  style={modernSelectStyle}
-                  onFocus={(e) => Object.assign(e.target.style, modernFocusStyle)}
-                  onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: '0 3px 15px rgba(0, 200, 81, 0.08)', transform: 'none' })}
-                >
-                  <option value="">Все категории корма</option>
-                  {availableFeedCategories.map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+            <select
+              value={selectedFeedCategory}
+              onChange={(e) => setSelectedFeedCategory(e.target.value)}
+              style={modernSelectStyle}
+              onFocus={(e) => Object.assign(e.target.style, modernFocusStyle)}
+              onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: '0 3px 15px rgba(0, 200, 81, 0.08)', transform: 'none' })}
+            >
+              <option value="">Все категории корма</option>
+              {(
+                (uniqueFeedCategories && uniqueFeedCategories.length > 0)
+                  ? uniqueFeedCategories
+                  : ['полнорационный','дополнительный','терапевтический']
+              ).map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
 
             <select
               value={selectedCategory}
@@ -459,109 +437,88 @@ if (loading) {
               onFocus={(e) => Object.assign(e.target.style, modernFocusStyle)}
               onBlur={(e) => Object.assign(e.target.style, { borderColor: 'rgba(0, 200, 81, 0.2)', boxShadow: '0 3px 15px rgba(0, 200, 81, 0.08)', transform: 'none' })}
             >
-              <option value="">Все назначения</option>
-              {uniquePurposes && uniquePurposes.length > 0 ? (
-                uniquePurposes.map(p => (
-                  <option key={p} value={p}>{p}</option>
-                ))
-              ) : (
-                <>
-                  <option value="kitten">Котята</option>
-                  <option value="puppy_small">Щенки мелких пород</option>
-                  <option value="puppy_medium">Щенки средних пород</option>
-                  <option value="puppy_large">Щенки крупных пород</option>
-                  <option value="adult">Взрослые</option>
-                  <option value="senior">Пожилые</option>
-                  <option value="sterilized_cat">Стерилизованные кошки</option>
-                  <option value="active">Активные собаки</option>
-                  <option value="working">Рабочие собаки</option>
-                  <option value="weight_loss">Снижение веса</option>
-                  <option value="sensitive_digestion">Чувствительное пищеварение</option>
-                  <option value="skin_coat">Кожа и шерсть</option>
-                </>
-              )}
+              <option value="">Все категории</option>
+              
+              {/* Категории для щенков */}
+              <optgroup label="🐶 Для щенков">
+                <option value="puppy_small">Щенки мелких пород</option>
+                <option value="puppy_medium">Щенки средних пород</option>
+                <option value="puppy_large">Щенки крупных пород</option>
+                <option value="puppy_all">Щенки всех пород</option>
+              </optgroup>
+              
+              {/* Категории для котят */}
+              <optgroup label="🐱 Для котят">
+                <option value="kitten">Котята</option>
+                <option value="kitten_mother">Котята и кормящие кошки</option>
+              </optgroup>
+              
+              {/* Категории для взрослых */}
+              <optgroup label="🦮 Для взрослых собак">
+                <option value="adult_small">Взрослые мелких пород</option>
+                <option value="adult_medium">Взрослые средних пород</option>
+                <option value="adult_large">Взрослые крупных пород</option>
+                <option value="adult_all">Взрослые всех пород</option>
+                <option value="active">Активные собаки</option>
+                <option value="working">Рабочие собаки</option>
+              </optgroup>
+              
+              <optgroup label="🐈 Для взрослых кошек">
+                <option value="adult_cat">Взрослые кошки</option>
+                <option value="indoor_cat">Домашние кошки</option>
+                <option value="outdoor_cat">Уличные кошки</option>
+              </optgroup>
+              
+              {/* Категории для пожилых */}
+              <optgroup label="👴 Для пожилых">
+                <option value="senior_dog">Пожилые собаки</option>
+                <option value="senior_cat">Пожилые кошки</option>
+              </optgroup>
+              
+              {/* Специализированные диеты */}
+              <optgroup label="⚕️ Диетические (базовые)">
+                <option value="weight_loss">Снижение веса</option>
+                <option value="sensitive_digestion">Чувствительное пищеварение</option>
+                <option value="skin_coat">Здоровье кожи и шерсти</option>
+              </optgroup>
+              
+              {/* Профессиональные диеты (будут скрыты для обычных пользователей) */}
+              <optgroup label="🏥 Лечебные диеты (PRO)" style={{ color: '#999', fontStyle: 'italic' }}>
+                <option value="renal" disabled>Почечные диеты</option>
+                <option value="hepatic" disabled>Печеночные диеты</option>
+                <option value="cardiac" disabled>Кардиологические</option>
+                <option value="diabetic" disabled>Диабетические</option>
+                <option value="gastrointestinal" disabled>Желудочно-кишечные</option>
+                <option value="urinary" disabled>Урологические</option>
+                <option value="hypoallergenic" disabled>Гипоаллергенные</option>
+              </optgroup>
             </select>
-            
           </div>
 
           {/* Кнопка добавления */}
-          {isPro ? (
-            <button
-              onClick={() => setShowAddForm(true)}
-              style={{
-                padding: '12px 24px',
-                background: 'linear-gradient(135deg, #00C851 0%, #33B5E5 100%)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '10px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'transform 0.3s ease',
-                boxShadow: '0 4px 16px rgba(0, 200, 81, 0.3)'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              ➕ Добавить корм
-            </button>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <button
-                disabled
-                title="Доступно в PRO"
-                style={{
-                  padding: '12px 24px',
-                  background: 'linear-gradient(135deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.08) 100%)',
-                  color: '#999',
-                  border: '2px dashed rgba(0,0,0,0.1)',
-                  borderRadius: '10px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'not-allowed'
-                }}
-              >
-                🔒 Добавить корм
-              </button>
-              <span style={{ color: '#6b7280', fontSize: 13 }}>
-                Функция доступна в PRO. <Link to="/login" style={{ color: '#00C851', textDecoration: 'none', fontWeight: 600 }}>Оформить подписку</Link>
-              </span>
-            </div>
-          )}
-        {/* Диапазоны БЖК */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
-          gap: '15px',
-          marginTop: '15px'
-        }}>
-          <div>
-            <label style={{ fontWeight: 600, color: '#2d3748', display: 'block', marginBottom: 6 }}>Белок, %</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input type="number" step="0.1" value={proteinMin} onChange={(e) => setProteinMin(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="от" style={{ padding: '8px', borderRadius: '8px', width: '100%' }} />
-              <input type="number" step="0.1" value={proteinMax} onChange={(e) => setProteinMax(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="до" style={{ padding: '8px', borderRadius: '8px', width: '100%' }} />
-            </div>
-          </div>
-          <div>
-            <label style={{ fontWeight: 600, color: '#2d3748', display: 'block', marginBottom: 6 }}>Жир, %</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input type="number" step="0.1" value={fatMin} onChange={(e) => setFatMin(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="от" style={{ padding: '8px', borderRadius: '8px', width: '100%' }} />
-              <input type="number" step="0.1" value={fatMax} onChange={(e) => setFatMax(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="до" style={{ padding: '8px', borderRadius: '8px', width: '100%' }} />
-            </div>
-          </div>
-          <div>
-            <label style={{ fontWeight: 600, color: '#2d3748', display: 'block', marginBottom: 6 }}>Клетчатка, %</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input type="number" step="0.1" value={fiberMin} onChange={(e) => setFiberMin(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="от" style={{ padding: '8px', borderRadius: '8px', width: '100%' }} />
-              <input type="number" step="0.1" value={fiberMax} onChange={(e) => setFiberMax(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="до" style={{ padding: '8px', borderRadius: '8px', width: '100%' }} />
-            </div>
-          </div>
-        </div>
-
+          <button
+            onClick={() => setShowAddForm(true)}
+            style={{
+              padding: '12px 24px',
+              background: 'linear-gradient(135deg, #00C851 0%, #33B5E5 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '10px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'transform 0.3s ease',
+              boxShadow: '0 4px 16px rgba(0, 200, 81, 0.3)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+          >
+            ➕ Добавить корм
+          </button>
         </div>
       </div>
 
@@ -634,7 +591,7 @@ if (loading) {
         </div>
       </div>
 
-      {/* Дополнительные фильтры убраны, всё перенесено в верхнюю панель */}
+            {/* Дополнительные фильтры убраны: всё в верхней панели */}
 
 
       {/* --- ТАБЛИЦА КОРМОВ --- */}
@@ -809,7 +766,7 @@ if (loading) {
       )}
 
       {/* --- ФОРМА ДОБАВЛЕНИЯ КОРМА --- */}
-      {isPro && showAddForm && (
+      {showAddForm && (
         <div style={{
           position: 'fixed',
           top: 0,
