@@ -3,8 +3,8 @@ const config = {
   // Локальная разработка - пробуем разные варианты подключения
   API_BASE_URL: process.env.REACT_APP_API_URL || 
     (process.env.NODE_ENV === 'production' 
-      ? 'https://https://x2-backend-j0jk.onrender.com'
-      : 'http://https://x2-backend-j0jk.onrender.com'),
+      ? 'https://x2-backend-j0jk.onrender.com'
+      : 'http://localhost:3001'),
   
   // API endpoints
   API_ENDPOINTS: {
